@@ -160,8 +160,7 @@ class SpinlessHubbard:
     Args:
       V: numpy array of length self.nsites, containing the potential
     """
-    for i in range(len(self.dets)):
-      # list of occupied determinants
-      occ_i = [ind for ind,a in enumerate(self.dets[i]) if a == '1']
-      for site in occ_i:
+    for i in range(self.ndets):
+      # loop over all occupied sites in determinant i:
+      for site in self.dets[i]:
         self.hamil[i,i] += V[site]
