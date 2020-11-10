@@ -1,7 +1,7 @@
 from absl import app
 from absl import flags
-import numpy as np
 from hamiltonian import SpinlessHubbard
+from wave_function import WaveFunction
 
 FLAGS = flags.FLAGS
 flags.DEFINE_integer('nsites', 4, 'Number of lattice sites.')
@@ -29,21 +29,11 @@ def main(argv):
 
   model.construct()
 
-  # Printing the solutions:
-  e, psi = np.linalg.eigh(model.hamil)
-
-  print("Energies:")
-  for i in range(model.ndets):
-    print(i, e[i])
-
-  print("WF:")
-  for i in range(model.ndets):
-    i_bin = model.dets[i]
-    if abs(psi[i,0]) > 1.e-10:
-      npart = i_bin.count('1')
-      print(i_bin, psi[i,0])
-    else:
-      print(i_bin, 0)
+  # find and print eigenvectors and energies
+  wf = WaveFunction(model)
+  wf.solve_eigenvalue(model.hamil)
+  wf.print_energies()
+  wf.print_ground()
 
 if __name__ == '__main__':
   app.run(main)
