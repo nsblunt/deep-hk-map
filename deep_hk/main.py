@@ -35,5 +35,8 @@ def main(argv):
   wf.print_energies()
   wf.print_ground()
 
+  wf.calc_gs_density()
+  wf.print_gs_density()
+
 if __name__ == '__main__':
   app.run(main)
