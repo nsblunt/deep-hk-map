@@ -15,6 +15,7 @@ class WaveFunction:
     self.energies = None
 
     self.density_gs = None
+    self.corr_fn_gs = None
 
   def solve_eigenvalue(self, hamil):
     """Solve the eigenvalue problem for the provided Hamiltonian. The
@@ -27,13 +28,20 @@ class WaveFunction:
     self.energies, self.coeffs = np.linalg.eigh(hamil)
 
   def calc_gs_density(self):
-    """Calculate the local density from the ground state wave function.
-       Also print the total sum of the densities, which should be the
-       total number of particles."""
+    """Calculate the local density from the ground state wave function."""
     self.density_gs = np.zeros( self.nsites )
     for det, coeff in zip(self.dets, self.coeffs[:,0]):
       for site in det:
         self.density_gs[site] += coeff**2
+
+  def calc_corr_fn_gs(self):
+    """Calculate the two-point density correlation function for the ground
+       state wave function."""
+    self.corr_fn_gs = np.zeros( (self.nsites, self.nsites) )
+    for det, coeff in zip(self.dets, self.coeffs[:,0]):
+      for site1 in det:
+        for site2 in det:
+          self.corr_fn_gs[site1,site2] += coeff**2
 
   def print_energies(self):
     """Print the list of energies to screen."""
@@ -42,13 +50,23 @@ class WaveFunction:
       print('{:6d}  {: .8e}'.format(i, self.energies[i]))
 
   def print_gs_density(self):
-    """Print the ground-state local density."""
+    """Print the ground-state local density. Also print the total sum of
+       the densities, which should be the total number of particles."""
     print("Ground-state local density:")
     total = 0.0
     for i in range(self.nsites):
       total += self.density_gs[i]
       print('{:6d}  {: .8e}'.format(i, self.density_gs[i]))
     print('Summation: {:6.2f}'.format(total))
+
+  def print_corr_fn_gs(self):
+    """Print the two-point density correlation function of the ground
+       state wave function."""
+    print(self.corr_fn_gs)
+    print("Ground-state two-point correlation function:")
+    for i in range(self.nsites):
+      for j in range(self.nsites):
+        print('({:6d}, {:6d})  {: .8e}'.format(i, j, self.corr_fn_gs[i,j]))
 
   def print_ground(self):
     """Print the ground state wave function coefficients (and corresponding
