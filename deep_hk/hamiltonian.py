@@ -86,11 +86,11 @@ class SpinlessHubbard:
             # the excitations
             ind_ex_set = set(self.dets[i]).symmetric_difference(set(self.dets[j]))
             ind_ex = tuple(ind_ex_set)
-            count_ij = len(ind_ex)
+            count_ex = len(ind_ex)
      
             # Can only have a non-zero off-diagonal element for a single
             # excitation, which is this condition:
-            if count_ij == 2:
+            if count_ex == 2:
               # If connected then we have a non-zero Hamiltonian element
               if self.connected(ind_ex):
                 par = self.parity_single(self.dets[i], self.dets[j], ind_ex)

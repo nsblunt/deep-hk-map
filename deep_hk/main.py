@@ -44,6 +44,8 @@ def main(argv):
   wf.print_gs_density()
   wf.calc_corr_fn_gs()
   wf.print_corr_fn_gs()
+  wf.calc_rdm1_gs()
+  wf.print_rdm1_gs()
 
 if __name__ == '__main__':
   app.run(main)
