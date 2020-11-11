@@ -85,7 +85,6 @@ class WaveFunction:
   def print_corr_fn_gs(self):
     """Print the two-point density correlation function of the ground
        state wave function."""
-    print(self.corr_fn_gs)
     print("Ground-state two-point correlation function:")
     for i in range(self.nsites):
       for j in range(self.nsites):
