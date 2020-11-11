@@ -2,6 +2,7 @@ from absl import app
 from absl import flags
 from hamiltonian import SpinlessHubbard
 from wave_function import WaveFunction
+import numpy as np
 
 FLAGS = flags.FLAGS
 flags.DEFINE_integer('nsites', 4, 'Number of lattice sites.')
@@ -28,6 +29,12 @@ def main(argv):
   )
 
   model.construct()
+
+  # apply a staggered potential
+  V = np.ndarray(FLAGS.nsites)
+  for i in range(FLAGS.nsites):
+    V[i] = 0.5*(-1)**i
+  model.add_potential_to_hamil(V)
 
   wf = WaveFunction(
     nsites=model.nsites,

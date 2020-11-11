@@ -26,6 +26,17 @@ class SpinlessHubbard:
       seed: int
         Seed for the random number generator, used to generate random
         potentials.
+
+    Other Attributes:
+      dets: list of (tuple of int)
+        List of determinants which span the space under consideration.
+        Each determinant is represented as a tuple holding the occupied sites.
+      ndets: int
+        The total number of determinants
+      hamil: numpy ndarray of size (ndets, ndets)
+        Hamiltonian matrix for the spinless Hubbard model
+      hamil_diag: numpy ndarray of size (ndets)
+        The diagonal elements of the Hamiltonian matrix
     """
     self.U = U
     self.t = t
@@ -38,6 +49,7 @@ class SpinlessHubbard:
     self.dets = None
     self.ndets = None
     self.hamil = None
+    self.hamil_diag = None
 
     random.seed(self.seed)
 
@@ -66,7 +78,8 @@ class SpinlessHubbard:
 
     self.generate_dets()
 
-    self.hamil = np.zeros( (self.ndets, self.ndets), dtype=float )
+    self.hamil = np.zeros((self.ndets, self.ndets), dtype=float)
+    self.hamil_diag = np.zeros(self.ndets, dtype=float)
 
     for i in range(self.ndets):
       count_i = len(self.dets[i])
@@ -74,6 +87,7 @@ class SpinlessHubbard:
       for j in range(self.ndets):
         if i == j:
           self.hamil[i,i] = self.diag_hamil_elem(self.dets[i])
+          self.hamil_diag[i] = self.hamil[i,i]
         else:
           if j < i:
             continue
@@ -149,7 +163,7 @@ class SpinlessHubbard:
       occ_j: tuple of int
         tuple holding all occupied sites in determinant j
       ind_ex: tuple of int
-        the two sites who occupation changes in the excitation
+        the two sites whose occupation changes in the excitation
     """
     if ind_ex[0] in occ_i:
       ind_i = ind_ex[0]
@@ -173,22 +187,23 @@ class SpinlessHubbard:
        random number between -0.5 and 0.5
 
     Returns:
-      V: numpy ndarray
-        array of length nsites, containing the potential
+      V: numpy ndarray of size (nsites)
+        a random external potential
     """
     V = np.zeros( self.nsites )
     for i in range(self.nsites):
       V[i] = random.uniform(-0.5, 0.5)
     return V
 
-  def add_potential_to_ham(self, V):
+  def add_potential_to_hamil(self, V):
     """Add the potential V into the Hamiltonian object, hamil.
 
     Args:
-      V: numpy ndarray
-        array of length nsites, containing the potential
+      V: numpy ndarray of size (nsites)
+        an external potential
     """
     for i in range(self.ndets):
       # loop over all occupied sites in determinant i:
+      self.hamil[i,i] = self.hamil_diag[i]
       for site in self.dets[i]:
         self.hamil[i,i] += V[site]
