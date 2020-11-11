@@ -29,15 +29,19 @@ def main(argv):
 
   model.construct()
 
+  wf = WaveFunction(
+    nsites=model.nsites,
+    dets=model.dets
+  )
+
   # find and print eigenvectors and energies
-  wf = WaveFunction(model)
   wf.solve_eigenvalue(model.hamil)
   wf.print_energies()
   wf.print_ground()
 
+  # find and print properties
   wf.calc_gs_density()
   wf.print_gs_density()
-
   wf.calc_corr_fn_gs()
   wf.print_corr_fn_gs()
 

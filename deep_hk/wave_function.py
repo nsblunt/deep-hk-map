@@ -1,19 +1,42 @@
 import numpy as np
 
 class WaveFunction:
-  """Class to store a wave function and methods to calculate properties."""
+  """Class to store wave functions and calculate properties."""
 
-  def __init__(self, model):
-    self.nsites = model.nsites
-    self.fixed_nparticles = model.fixed_nparticles
-    self.nparticles = model.nparticles
+  def __init__(self, nsites, dets):
+    """Initialises an object for a wave function of a spinless lattice model.
 
-    self.dets = model.dets
-    self.ndets = model.ndets
+    Args:
+      nsites: int
+        The number of lattice sites
+      dets: list of (tuple of int)
+        List of determinants which span the space under consideration.
+        Each determinant is represented as a tuple holding the occupied sites.
 
+    Other Attributes:
+      ndets: int
+        The total number of determinants
+      coeffs: numpy ndarray of size (ndets, ndets)
+        Array holding the energy eigenfunctions themselves. The i'th energy
+        eigenstate has coefficients coeffs[:,i], with the same ordering as
+        the determinants held in dets.
+      energies: numpy ndarray of size (ndets)
+        The energy eigenvalues
+      density_gs: numpy ndarray of size (nsites)
+        The local density of the ground-state wave function
+      corr_fn_gs: numpy ndarray of size (nsites, nsites)
+        The two-point density correlation function of the ground-state
+        wave function
+    """
+    self.nsites = nsites
+    self.dets = dets
+    self.ndets = len(dets)
+
+    # from the solution of eigenvalue problem
     self.coeffs = None
     self.energies = None
 
+    # properties that can be calculated
     self.density_gs = None
     self.corr_fn_gs = None
 
@@ -22,13 +45,13 @@ class WaveFunction:
        results are stored internally in energies and coeffs.
 
     Args:
-      hamil: numpy ndarray which should be of size (ndets, ndets), which
-        holds the Hamiltonian matrix
+      hamil: numpy ndarray of size (ndets, ndets)
+        the Hamiltonian matrix
     """
     self.energies, self.coeffs = np.linalg.eigh(hamil)
 
   def calc_gs_density(self):
-    """Calculate the local density from the ground state wave function."""
+    """Calculate the local density from the ground-state wave function."""
     self.density_gs = np.zeros( self.nsites )
     for det, coeff in zip(self.dets, self.coeffs[:,0]):
       for site in det:

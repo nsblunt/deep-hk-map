@@ -6,6 +6,27 @@ class SpinlessHubbard:
   """Hamiltonian for a spinless Hubbard model."""
 
   def __init__(self, U, t, mu, nsites, fixed_nparticles, nparticles, seed):
+    """Initialises an object for the Hamiltonian of a spinless Hubbard model.
+
+    Args:
+      U: float
+        The density-density interaction parameter
+      t: float
+        The hopping amplitude parameter
+      mu: float
+        The chemical potential
+      nsites: int
+        The number of lattice sites
+      fixed_nparticles: bool
+        True if considering a fixed number of particles. False if
+        considering all particle number sectors simultaneously.
+      nparticles: int
+        The number of particles. This is only used if fixed_nparticles
+        is True.
+      seed: int
+        Seed for the random number generator, used to generate random
+        potentials.
+    """
     self.U = U
     self.t = t
     self.mu = mu
@@ -81,7 +102,8 @@ class SpinlessHubbard:
        corresponding to determinant represented by i_bin.
   
     Args:
-      occ_list: tuple holding all occupied sites in the determinant
+      occ_list: tuple of int
+        tuple holding all occupied sites in the determinant
     """
     nparticles = len(occ_list)
   
@@ -105,7 +127,8 @@ class SpinlessHubbard:
     """Return true if two sites are connected on the lattice.
   
     Args:
-      ind_ex: tuple of two sites involved in the excitation
+      ind_ex: tuple of int
+        the two sites who occupation changes in the excitation
     """
     # connected if nearest neighbours
     if ind_ex[1] == ind_ex[0]+1:
@@ -121,9 +144,12 @@ class SpinlessHubbard:
        single excitation apart from each other.
   
     Args:
-      occ_i: tuple holding all occupied sites in determinant i
-      occ_j: tuple holding all occupied sites in determinant j
-      ind_ex: tuple of two sites involved in the excitation
+      occ_i: tuple of int
+        tuple holding all occupied sites in determinant i
+      occ_j: tuple of int
+        tuple holding all occupied sites in determinant j
+      ind_ex: tuple of int
+        the two sites who occupation changes in the excitation
     """
     if ind_ex[0] in occ_i:
       ind_i = ind_ex[0]
@@ -147,7 +173,8 @@ class SpinlessHubbard:
        random number between -0.5 and 0.5
 
     Returns:
-      V: numpy array of length self.nsites, containing the potential
+      V: numpy ndarray
+        array of length nsites, containing the potential
     """
     V = np.zeros( self.nsites )
     for i in range(self.nsites):
@@ -158,7 +185,8 @@ class SpinlessHubbard:
     """Add the potential V into the Hamiltonian object, hamil.
 
     Args:
-      V: numpy array of length self.nsites, containing the potential
+      V: numpy ndarray
+        array of length nsites, containing the potential
     """
     for i in range(self.ndets):
       # loop over all occupied sites in determinant i:
