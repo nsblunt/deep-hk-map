@@ -69,7 +69,7 @@ class SpinlessHubbard:
         i_bin = bin(i)[2:].zfill(self.nsites)
         occ_list = [ind for ind,a in enumerate(i_bin) if a == '1']
         occ_tuple = tuple(occ_list)
-        dets.append(occ_tuple)
+        self.dets.append(occ_tuple)
 
     self.ndets = len(self.dets)
 
