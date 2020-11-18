@@ -1,5 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.data import DataLoader
 
 class LinearNet(nn.Module):
   def __init__(self, layers_list):
@@ -32,17 +33,17 @@ def train(net, data, criterion, optimizer, nepochs):
 
   print('# 1. Epoch' + 6*' ' + '2. Loss')
 
+  data_loader = DataLoader(data, batch_size=nbatch, shuffle=False,
+                            num_workers=0)
+
   # train network
   for epoch in range(nepochs):
     total_loss = 0.0
-    for i in range(int(ntrain/nbatch)):
-      inputs = data.inputs_train[nbatch*i:nbatch*(i+1)-1, :]
-      labels = data.labels_train[nbatch*i:nbatch*(i+1)-1, :]
 
+    for batch_inputs, batch_labels in data_loader:
       optimizer.zero_grad()
-
-      outputs = net(inputs)
-      loss = criterion(outputs, labels)
+      batch_outputs = net(batch_inputs)
+      loss = criterion(batch_outputs, batch_labels)
       loss.backward()
       optimizer.step()
 

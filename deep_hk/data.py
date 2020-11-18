@@ -1,10 +1,11 @@
 from system import SpinlessHubbard
 from wave_function import WaveFunction
+from torch.utils.data import Dataset
 import torch
 import ast
 import csv
 
-class Data:
+class Data(Dataset):
 
   def __init__(self, system, ntrain, ntest, nbatch):
     self.sys = system
@@ -17,6 +18,12 @@ class Data:
 
     self.inputs_test = None
     self.labels_test = None
+
+  def __len__(self):
+    return len(self.labels_train)
+
+  def __getitem__(self, index):
+    return self.inputs_train[index], self.labels_train[index]
 
   def generate(self, data_type, input_type='potential'):
     sys = self.sys
