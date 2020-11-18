@@ -1,4 +1,4 @@
-from hamiltonian import SpinlessHubbard
+from system import SpinlessHubbard
 from wave_function import WaveFunction
 import torch
 import ast
@@ -7,7 +7,7 @@ import csv
 class Data:
 
   def __init__(self, system, ntrain, ntest, nbatch):
-    self.system = system
+    self.sys = system
     self.ntrain = ntrain
     self.ntest = ntest
     self.nbatch = nbatch
@@ -19,21 +19,21 @@ class Data:
     self.labels_test = None
 
   def gen_training_data(self):
-    system = self.system
-    self.inputs_train = torch.zeros(self.ntrain, system.nsites, dtype=torch.float)
+    sys = self.sys
+    self.inputs_train = torch.zeros(self.ntrain, sys.nsites, dtype=torch.float)
     self.labels_train = torch.zeros(self.ntrain, 1)
 
     for i in range(self.ntrain):
-      V = system.gen_rand_potential()
-      system.add_potential_to_hamil(V)
+      V = sys.gen_rand_potential()
+      sys.add_potential_to_hamil(V)
       
       wf = WaveFunction(
-        nsites=system.nsites,
-        dets=system.dets
+        nsites=sys.nsites,
+        dets=sys.dets
       )
 
       # find and print eigenvectors and energies
-      wf.solve_eigenvalue(system.hamil)
+      wf.solve_eigenvalue(sys.hamil)
       # find and print properties
       wf.calc_gs_density()
 
@@ -47,21 +47,21 @@ class Data:
       #data.append(sample)
 
   def gen_test_data(self):
-    system = self.system
-    self.inputs_test = torch.zeros(self.ntest, system.nsites, dtype=torch.float)
+    sys = self.sys
+    self.inputs_test = torch.zeros(self.ntest, sys.nsites, dtype=torch.float)
     self.labels_test = torch.zeros(self.ntest, 1)
 
     for i in range(self.ntest):
-      V = system.gen_rand_potential()
-      system.add_potential_to_hamil(V)
+      V = sys.gen_rand_potential()
+      sys.add_potential_to_hamil(V)
       
       wf = WaveFunction(
-        nsites=system.nsites,
-        dets=system.dets
+        nsites=sys.nsites,
+        dets=sys.dets
       )
 
       # find and print eigenvectors and energies
-      wf.solve_eigenvalue(system.hamil)
+      wf.solve_eigenvalue(sys.hamil)
       # find and print properties
       wf.calc_gs_density()
 

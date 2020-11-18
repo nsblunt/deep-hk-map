@@ -1,7 +1,7 @@
 from absl import app
 from absl import flags
 from data import Data
-from hamiltonian import SpinlessHubbard
+from system import SpinlessHubbard
 from wave_function import WaveFunction
 from networks import LinearNet, train_network
 import torch.nn as nn
@@ -26,7 +26,7 @@ flags.DEFINE_integer('nepochs', 100, 'Number of training epochs to perform.')
 def main(argv):
   del argv
 
-  system = SpinlessHubbard(
+  sys = SpinlessHubbard(
     U=FLAGS.U,
     t=FLAGS.t,
     mu=FLAGS.mu,
@@ -35,10 +35,10 @@ def main(argv):
     nparticles=FLAGS.nparticles,
     seed=FLAGS.seed
   )
-  system.construct()
+  sys.construct()
 
   data = Data(
-    system=system,
+    system=sys,
     ntrain=FLAGS.ntrain,
     ntest=FLAGS.ntest,
     nbatch=FLAGS.nbatch
