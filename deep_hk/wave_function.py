@@ -91,7 +91,7 @@ class WaveFunction:
 
         nel_2 = len(det_2)
         # Find the list of sites involved in the excitation between
-        # the two  determinants.
+        # the two determinants.
         ind_ex_set = set(det_1).symmetric_difference(set(det_2))
         ind_ex = tuple(ind_ex_set)
         count_ex = len(ind_ex)

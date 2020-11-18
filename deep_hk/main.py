@@ -1,8 +1,10 @@
 from absl import app
 from absl import flags
+from data import Data
 from hamiltonian import SpinlessHubbard
 from wave_function import WaveFunction
-import numpy as np
+from networks import LinearNet, train_network
+import torch.nn as nn
 
 FLAGS = flags.FLAGS
 flags.DEFINE_integer('nsites', 4, 'Number of lattice sites.')
@@ -15,10 +17,16 @@ flags.DEFINE_boolean(
     'fixed_nparticles', True, 'True is using a fixed number of particles. '
     'False if using all particle sectors.')
 
+flags.DEFINE_integer('ntrain', 10000, 'Number of training samples to '
+                      'generate.')
+flags.DEFINE_integer('ntest', 100, 'Number of test samples to generate.')
+flags.DEFINE_integer('nbatch', 100, 'Number of samples per training batch.')
+flags.DEFINE_integer('nepochs', 100, 'Number of training epochs to perform.')
+
 def main(argv):
   del argv
 
-  model = SpinlessHubbard(
+  system = SpinlessHubbard(
     U=FLAGS.U,
     t=FLAGS.t,
     mu=FLAGS.mu,
@@ -27,32 +35,21 @@ def main(argv):
     nparticles=FLAGS.nparticles,
     seed=FLAGS.seed
   )
+  system.construct()
 
-  model.construct()
-
-  # apply a staggered potential
-  V = np.ndarray(FLAGS.nsites)
-  for i in range(FLAGS.nsites):
-    V[i] = 0.5*(-1)**i
-  model.add_potential_to_hamil(V)
-
-  wf = WaveFunction(
-    nsites=model.nsites,
-    dets=model.dets
+  data = Data(
+    system=system,
+    ntrain=FLAGS.ntrain,
+    ntest=FLAGS.ntest,
+    nbatch=FLAGS.nbatch
   )
+  data.gen_training_data()
+  data.gen_test_data()
 
-  # find and print eigenvectors and energies
-  wf.solve_eigenvalue(model.hamil)
-  wf.print_energies()
-  wf.print_ground()
+  layers_list = [nn.Linear(FLAGS.nsites, 100), nn.Linear(100, 1)]
+  net = LinearNet(layers_list)
 
-  # find and print properties
-  wf.calc_gs_density()
-  wf.print_gs_density()
-  wf.calc_corr_fn_gs()
-  wf.print_corr_fn_gs()
-  wf.calc_rdm1_gs()
-  wf.print_rdm1_gs()
+  train_network(net, data, FLAGS.nepochs)
 
 if __name__ == '__main__':
   app.run(main)
