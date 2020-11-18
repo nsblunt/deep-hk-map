@@ -3,7 +3,7 @@ from absl import flags
 from data import Data
 from system import SpinlessHubbard
 from wave_function import WaveFunction
-from networks import LinearNet, train_network
+import networks
 
 import torch
 import torch.nn as nn
@@ -24,6 +24,9 @@ flags.DEFINE_integer('ntrain', 10000, 'Number of training samples to '
 flags.DEFINE_integer('ntest', 100, 'Number of test samples to generate.')
 flags.DEFINE_integer('nbatch', 100, 'Number of samples per training batch.')
 flags.DEFINE_integer('nepochs', 100, 'Number of training epochs to perform.')
+
+flags.DEFINE_list('layer_widths', [100], 'The number of hidden units in '
+    'each layer of the network, input as comma-separated values.')
 
 def main(argv):
   del argv
@@ -49,10 +52,12 @@ def main(argv):
   data.gen_test_data()
 
   torch.manual_seed(FLAGS.seed)
-  layers_list = [nn.Linear(FLAGS.nsites, 100), nn.Linear(100, 1)]
-  net = LinearNet(layers_list)
 
-  train_network(net, data, FLAGS.nepochs)
+  layer_widths = [int(s) for s in FLAGS.layer_widths]
+  layers_list = networks.create_network_layers(FLAGS.nsites, layer_widths, 1)
+  net = networks.LinearNet(layers_list)
+
+  networks.train_network(net, data, FLAGS.nepochs)
 
 if __name__ == '__main__':
   app.run(main)
