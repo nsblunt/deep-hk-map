@@ -39,7 +39,6 @@ def train_network(net, data, nepochs):
       total_loss += loss.item()
 
     print('%d %.5f' % (epoch, total_loss), flush=True)
-    total_loss = 0.0
 
   # final network applied to the training data
   outputs_train = net(data.inputs_train)

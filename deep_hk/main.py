@@ -4,6 +4,8 @@ from data import Data
 from system import SpinlessHubbard
 from wave_function import WaveFunction
 from networks import LinearNet, train_network
+
+import torch
 import torch.nn as nn
 
 FLAGS = flags.FLAGS
@@ -46,6 +48,7 @@ def main(argv):
   data.gen_training_data()
   data.gen_test_data()
 
+  torch.manual_seed(FLAGS.seed)
   layers_list = [nn.Linear(FLAGS.nsites, 100), nn.Linear(100, 1)]
   net = LinearNet(layers_list)
 
