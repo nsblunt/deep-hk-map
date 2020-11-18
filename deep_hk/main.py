@@ -19,6 +19,9 @@ flags.DEFINE_boolean(
     'fixed_nparticles', True, 'True is using a fixed number of particles. '
     'False if using all particle sectors.')
 
+flags.DEFINE_enum(
+    'input_type', 'potential', ['potential', 'density'], 'Specify which '
+    'object we pass into the network input.')
 flags.DEFINE_integer('ntrain', 10000, 'Number of training samples to '
                       'generate.')
 flags.DEFINE_integer('ntest', 100, 'Number of test samples to generate.')
@@ -48,8 +51,8 @@ def main(argv):
     ntest=FLAGS.ntest,
     nbatch=FLAGS.nbatch
   )
-  data.generate(data_type='train')
-  data.generate(data_type='test')
+  data.generate(data_type='train', input_type=FLAGS.input_type)
+  data.generate(data_type='test', input_type=FLAGS.input_type)
 
   torch.manual_seed(FLAGS.seed)
 

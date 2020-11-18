@@ -18,7 +18,7 @@ class Data:
     self.inputs_test = None
     self.labels_test = None
 
-  def generate(self, data_type):
+  def generate(self, data_type, input_type='potential'):
     sys = self.sys
     inputs = torch.zeros(self.ntrain, sys.nsites, dtype=torch.float)
     labels = torch.zeros(self.ntrain, 1)
@@ -41,12 +41,13 @@ class Data:
 
       # find and print eigenvectors and energies
       wf.solve_eigenvalue(sys.hamil)
-      # find and print properties
-      wf.calc_gs_density()
 
-      #torch_density = torch.from_numpy(wf.density_gs)
-      torch_density = torch.from_numpy(V)
-      inputs[i,:] = torch_density
+      if input_type == 'potential':
+        inputs[i,:] = torch.from_numpy(V)
+      elif input_type == 'density':
+        wf.calc_gs_density()
+        inputs[i,:] = torch.from_numpy(wf.density_gs)
+
       labels[i,0] = wf.energies[0]
 
       #sample = {'density': list(wf.density_gs), 'energy': wf.energies[0]}
