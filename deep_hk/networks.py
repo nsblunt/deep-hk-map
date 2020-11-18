@@ -1,6 +1,5 @@
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
 
 class LinearNet(nn.Module):
   def __init__(self, layers_list):
@@ -26,13 +25,12 @@ def create_linear_layers(num_input, num_hidden, num_output):
 
   return layers_list
 
-def train(net, data, nepochs):
+def train(net, data, criterion, optimizer, nepochs):
   ntrain = data.ntrain
   nbatch = data.nbatch
   ntest = data.ntest
 
-  criterion = nn.L1Loss()
-  optimizer = optim.Adam(net.parameters(), lr=0.001)
+  print('# 1. Epoch' + 6*' ' + '2. Loss')
 
   # train network
   for epoch in range(nepochs):
@@ -49,21 +47,22 @@ def train(net, data, nepochs):
       optimizer.step()
 
       total_loss += loss.item()
+    print('{:10d}   {:10.6f}'.format(epoch, total_loss), flush=True)
+  print(flush=True)
 
-    print('%d %.5f' % (epoch, total_loss), flush=True)
-
-  # final network applied to the training data
+def print_net_accuracy(net, data, criterion):
+  # apply network to the training data
   outputs_train = net(data.inputs_train)
   train_loss = criterion(outputs_train, data.labels_train)
-  print('Final training loss: %.5f' % train_loss)
+  print('Training loss: {:.5f}'.format(train_loss))
 
-  # final network applied to the test data
+  # apply network to the test data
   outputs_test = net(data.inputs_test)
   test_loss = criterion(outputs_test, data.labels_test)
-  print('Final test loss: %.5f' % test_loss)
+  print('Test loss: {:.5f}\n'.format(test_loss))
 
-  # print the exact values against the predicted values for the
-  # test data
-  print('# 1. iteration  2. exact  3. predicted')
-  for i in range(ntest):
-    print(i, float(data.labels_test[i][0]), float(outputs_test[i][0]))
+  # print the exact labels against the predicted labels for the test data
+  print('# 1. Iter.' + 8*' ' + '2. Exact' + 6*' ' + '3. Predicted')
+  for i in range(data.ntest):
+    print('{:8d}   {: .8e}   {: .8e}'.format(i,
+        float(data.labels_test[i][0]), float(outputs_test[i][0])))

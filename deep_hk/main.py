@@ -7,6 +7,7 @@ import networks
 
 import torch
 import torch.nn as nn
+import torch.optim as optim
 
 FLAGS = flags.FLAGS
 flags.DEFINE_integer('nsites', 4, 'Number of lattice sites.')
@@ -52,7 +53,7 @@ def main(argv):
     nbatch=FLAGS.nbatch
   )
   data.generate(data_type='train', input_type=FLAGS.input_type)
-  data.generate(data_type='test', input_type=FLAGS.input_type)
+  data.generate(data_type='test',  input_type=FLAGS.input_type)
 
   torch.manual_seed(FLAGS.seed)
 
@@ -60,7 +61,11 @@ def main(argv):
   layers_list = networks.create_linear_layers(FLAGS.nsites, layer_widths, 1)
   net = networks.LinearNet(layers_list)
 
-  networks.train(net, data, FLAGS.nepochs)
+  criterion = nn.L1Loss()
+  optimizer = optim.Adam(net.parameters(), lr=0.001)
+
+  networks.train(net, data, criterion, optimizer, FLAGS.nepochs)
+  networks.print_net_accuracy(net, data, criterion)
 
 if __name__ == '__main__':
   app.run(main)
