@@ -14,7 +14,7 @@ class LinearNet(nn.Module):
     x = self.layers[-1](x)
     return x
 
-def create_network_layers(num_input, num_hidden, num_output):
+def create_linear_layers(num_input, num_hidden, num_output):
   layers_list = []
   # input layer:
   layers_list.append( nn.Linear(num_input, num_hidden[0]) )
@@ -26,7 +26,7 @@ def create_network_layers(num_input, num_hidden, num_output):
 
   return layers_list
 
-def train_network(net, data, nepochs):
+def train(net, data, nepochs):
   ntrain = data.ntrain
   nbatch = data.nbatch
   ntest = data.ntest

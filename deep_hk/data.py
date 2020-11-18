@@ -18,10 +18,17 @@ class Data:
     self.inputs_test = None
     self.labels_test = None
 
-  def gen_training_data(self):
+  def generate(self, data_type):
     sys = self.sys
-    self.inputs_train = torch.zeros(self.ntrain, sys.nsites, dtype=torch.float)
-    self.labels_train = torch.zeros(self.ntrain, 1)
+    inputs = torch.zeros(self.ntrain, sys.nsites, dtype=torch.float)
+    labels = torch.zeros(self.ntrain, 1)
+
+    if data_type == 'train':
+      self.inputs_train = inputs
+      self.labels_train = labels
+    elif data_type == 'test':
+      self.inputs_test = inputs
+      self.labels_test = labels
 
     for i in range(self.ntrain):
       V = sys.gen_rand_potential()
@@ -39,36 +46,12 @@ class Data:
 
       #torch_density = torch.from_numpy(wf.density_gs)
       torch_density = torch.from_numpy(V)
-      self.inputs_train[i,:] = torch_density
-      self.labels_train[i,0] = wf.energies[0]
+      inputs[i,:] = torch_density
+      labels[i,0] = wf.energies[0]
 
       #sample = {'density': list(wf.density_gs), 'energy': wf.energies[0]}
       #sample = {'density': torch_density, 'energy': wf.energies[0]}
       #data.append(sample)
-
-  def gen_test_data(self):
-    sys = self.sys
-    self.inputs_test = torch.zeros(self.ntest, sys.nsites, dtype=torch.float)
-    self.labels_test = torch.zeros(self.ntest, 1)
-
-    for i in range(self.ntest):
-      V = sys.gen_rand_potential()
-      sys.add_potential_to_hamil(V)
-      
-      wf = WaveFunction(
-        nsites=sys.nsites,
-        dets=sys.dets
-      )
-
-      # find and print eigenvectors and energies
-      wf.solve_eigenvalue(sys.hamil)
-      # find and print properties
-      wf.calc_gs_density()
-
-      torch_density = torch.from_numpy(wf.density_gs)
-      torch_density = torch.from_numpy(V)
-      self.inputs_test[i,:] = torch_density
-      self.labels_test[i,0] = wf.energies[0]
 
   def print_data(self, data):
     keys = data[0].keys()

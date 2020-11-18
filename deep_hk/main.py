@@ -48,16 +48,16 @@ def main(argv):
     ntest=FLAGS.ntest,
     nbatch=FLAGS.nbatch
   )
-  data.gen_training_data()
-  data.gen_test_data()
+  data.generate(data_type='train')
+  data.generate(data_type='test')
 
   torch.manual_seed(FLAGS.seed)
 
   layer_widths = [int(s) for s in FLAGS.layer_widths]
-  layers_list = networks.create_network_layers(FLAGS.nsites, layer_widths, 1)
+  layers_list = networks.create_linear_layers(FLAGS.nsites, layer_widths, 1)
   net = networks.LinearNet(layers_list)
 
-  networks.train_network(net, data, FLAGS.nepochs)
+  networks.train(net, data, FLAGS.nepochs)
 
 if __name__ == '__main__':
   app.run(main)
