@@ -7,37 +7,26 @@ import csv
 
 class Data(Dataset):
 
-  def __init__(self, system, ntrain, ntest, nbatch):
+  def __init__(self, system, ndata, input_type='potential'):
     self.sys = system
-    self.ntrain = ntrain
-    self.ntest = ntest
-    self.nbatch = nbatch
+    self.ndata = ndata
+    self.input_type = input_type
 
-    self.inputs_train = None
-    self.labels_train = None
-
-    self.inputs_test = None
-    self.labels_test = None
+    self.inputs = None
+    self.labels = None
 
   def __len__(self):
-    return len(self.labels_train)
+    return len(self.labels)
 
   def __getitem__(self, index):
-    return self.inputs_train[index], self.labels_train[index]
+    return self.inputs[index], self.labels[index]
 
-  def generate(self, data_type, input_type='potential'):
+  def generate(self):
     sys = self.sys
-    inputs = torch.zeros(self.ntrain, sys.nsites, dtype=torch.float)
-    labels = torch.zeros(self.ntrain, 1)
+    self.inputs = torch.zeros(self.ndata, sys.nsites, dtype=torch.float)
+    self.labels = torch.zeros(self.ndata, 1)
 
-    if data_type == 'train':
-      self.inputs_train = inputs
-      self.labels_train = labels
-    elif data_type == 'test':
-      self.inputs_test = inputs
-      self.labels_test = labels
-
-    for i in range(self.ntrain):
+    for i in range(self.ndata):
       V = sys.gen_rand_potential()
       sys.add_potential_to_hamil(V)
       
@@ -49,13 +38,13 @@ class Data(Dataset):
       # find and print eigenvectors and energies
       wf.solve_eigenvalue(sys.hamil)
 
-      if input_type == 'potential':
-        inputs[i,:] = torch.from_numpy(V)
-      elif input_type == 'density':
+      if self.input_type == 'potential':
+        self.inputs[i,:] = torch.from_numpy(V)
+      elif self.input_type == 'density':
         wf.calc_gs_density()
-        inputs[i,:] = torch.from_numpy(wf.density_gs)
+        self.inputs[i,:] = torch.from_numpy(wf.density_gs)
 
-      labels[i,0] = wf.energies[0]
+      self.labels[i,0] = wf.energies[0]
 
       #sample = {'density': list(wf.density_gs), 'energy': wf.energies[0]}
       #sample = {'density': torch_density, 'energy': wf.energies[0]}

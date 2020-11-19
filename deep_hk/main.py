@@ -26,7 +26,7 @@ flags.DEFINE_enum(
 flags.DEFINE_integer('ntrain', 10000, 'Number of training samples to '
                       'generate.')
 flags.DEFINE_integer('ntest', 100, 'Number of test samples to generate.')
-flags.DEFINE_integer('nbatch', 100, 'Number of samples per training batch.')
+flags.DEFINE_integer('batch_size', 100, 'Number of samples per training batch.')
 flags.DEFINE_integer('nepochs', 100, 'Number of training epochs to perform.')
 
 flags.DEFINE_list('layer_widths', [100], 'The number of hidden units in '
@@ -46,14 +46,19 @@ def main(argv):
   )
   sys.construct()
 
-  data = Data(
+  data_train = Data(
     system=sys,
-    ntrain=FLAGS.ntrain,
-    ntest=FLAGS.ntest,
-    nbatch=FLAGS.nbatch
+    ndata=FLAGS.ntrain,
+    input_type=FLAGS.input_type
   )
-  data.generate(data_type='train', input_type=FLAGS.input_type)
-  data.generate(data_type='test',  input_type=FLAGS.input_type)
+  data_train.generate()
+
+  data_test = Data(
+    system=sys,
+    ndata=FLAGS.ntest,
+    input_type=FLAGS.input_type
+  )
+  data_test.generate()
 
   torch.manual_seed(FLAGS.seed)
 
@@ -64,8 +69,21 @@ def main(argv):
   criterion = nn.L1Loss()
   optimizer = optim.Adam(net.parameters(), lr=0.001)
 
-  networks.train(net, data, criterion, optimizer, FLAGS.nepochs)
-  networks.print_net_accuracy(net, data, criterion)
+  networks.train(
+    net,
+    data_train,
+    data_test,
+    criterion,
+    optimizer,
+    nepochs=FLAGS.nepochs,
+    batch_size=FLAGS.batch_size
+  )
+  networks.print_net_accuracy(
+    net,
+    data_train,
+    data_test,
+    criterion
+  )
 
 if __name__ == '__main__':
   app.run(main)

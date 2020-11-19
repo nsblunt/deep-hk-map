@@ -26,14 +26,10 @@ def create_linear_layers(num_input, num_hidden, num_output):
 
   return layers_list
 
-def train(net, data, criterion, optimizer, nepochs):
-  ntrain = data.ntrain
-  nbatch = data.nbatch
-  ntest = data.ntest
-
+def train(net, data_train, data_test, criterion, optimizer, nepochs, batch_size):
   print('# 1. Epoch' + 6*' ' + '2. Loss')
 
-  data_loader = DataLoader(data, batch_size=nbatch, shuffle=False,
+  data_loader = DataLoader(data_train, batch_size=batch_size, shuffle=False,
                             num_workers=0)
 
   # train network
@@ -51,19 +47,19 @@ def train(net, data, criterion, optimizer, nepochs):
     print('{:10d}   {:10.6f}'.format(epoch, total_loss), flush=True)
   print(flush=True)
 
-def print_net_accuracy(net, data, criterion):
+def print_net_accuracy(net, data_train, data_test, criterion):
   # apply network to the training data
-  outputs_train = net(data.inputs_train)
-  train_loss = criterion(outputs_train, data.labels_train)
+  outputs_train = net(data_train.inputs)
+  train_loss = criterion(outputs_train, data_train.labels)
   print('Training loss: {:.5f}'.format(train_loss))
 
   # apply network to the test data
-  outputs_test = net(data.inputs_test)
-  test_loss = criterion(outputs_test, data.labels_test)
+  outputs_test = net(data_test.inputs)
+  test_loss = criterion(outputs_test, data_test.labels)
   print('Test loss: {:.5f}\n'.format(test_loss))
 
   # print the exact labels against the predicted labels for the test data
   print('# 1. Iter.' + 8*' ' + '2. Exact' + 6*' ' + '3. Predicted')
-  for i in range(data.ntest):
+  for i in range(data_test.ndata):
     print('{:8d}   {: .8e}   {: .8e}'.format(i,
-        float(data.labels_test[i][0]), float(outputs_test[i][0])))
+        float(data_test.labels[i][0]), float(outputs_test[i][0])))
