@@ -59,7 +59,7 @@ def print_net_accuracy(net, data_train, data_test, criterion):
   print('Test loss: {:.5f}\n'.format(test_loss))
 
   # print the exact labels against the predicted labels for the test data
-  print('# 1. Iter.' + 8*' ' + '2. Exact' + 6*' ' + '3. Predicted')
+  print('# 1. Index' + 10*' ' + '2. Exact' + 6*' ' + '3. Predicted')
   for i in range(data_test.ndata):
-    print('{:8d}   {: .8e}   {: .8e}'.format(i,
+    print('{:10d}   {: .8e}   {: .8e}'.format(i,
         float(data_test.labels[i][0]), float(outputs_test[i][0])))
