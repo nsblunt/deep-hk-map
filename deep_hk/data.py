@@ -7,8 +7,9 @@ import csv
 
 class Data(Dataset):
 
-  def __init__(self, system, ndata, input_type='potential'):
+  def __init__(self, system, ninput, ndata, input_type='potential'):
     self.sys = system
+    self.ninput = ninput
     self.ndata = ndata
     self.input_type = input_type
 
@@ -23,7 +24,7 @@ class Data(Dataset):
 
   def generate(self):
     sys = self.sys
-    self.inputs = torch.zeros(self.ndata, sys.nsites, dtype=torch.float)
+    self.inputs = torch.zeros(self.ndata, self.ninput, dtype=torch.float)
     self.labels = torch.zeros(self.ndata, 1)
 
     for i in range(self.ndata):
@@ -35,7 +36,6 @@ class Data(Dataset):
         dets=sys.dets
       )
 
-      # find and print eigenvectors and energies
       wf.solve_eigenvalue(sys.hamil)
 
       if self.input_type == 'potential':
@@ -43,6 +43,9 @@ class Data(Dataset):
       elif self.input_type == 'density':
         wf.calc_gs_density()
         self.inputs[i,:] = torch.from_numpy(wf.density_gs)
+      elif self.input_type == '1-rdm':
+        wf.calc_rdm1_gs()
+        self.inputs[i,:] = torch.from_numpy(wf.rdm1_gs.flatten())
 
       self.labels[i,0] = wf.energies[0]
 
