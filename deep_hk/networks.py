@@ -35,6 +35,7 @@ def train(net, data_train, data_test, criterion, optimizer, nepochs, batch_size)
   # train network
   for epoch in range(nepochs):
     total_loss = 0.0
+    nbatches = 0
 
     for batch_inputs, batch_labels in data_loader:
       optimizer.zero_grad()
@@ -44,7 +45,9 @@ def train(net, data_train, data_test, criterion, optimizer, nepochs, batch_size)
       optimizer.step()
 
       total_loss += loss.item()
-    print('{:10d}   {:10.6f}'.format(epoch, total_loss), flush=True)
+      nbatches += 1
+    av_loss = total_loss/nbatches
+    print('{:10d}   {:10.6f}'.format(epoch, av_loss), flush=True)
   print(flush=True)
 
 def print_net_accuracy(net, data_train, data_test, criterion):
