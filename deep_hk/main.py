@@ -32,6 +32,14 @@ flags.DEFINE_float('lr', 0.001, 'The learning rate for the optimizer.')
 
 flags.DEFINE_list('layer_widths', [100], 'The number of hidden units in '
     'each layer of the network, input as comma-separated values.')
+flags.DEFINE_bool('save_net', True, 'If True, then save the final trained '
+    'network to a file.')
+flags.DEFINE_string('save_path', './network.pt', 'Path and name for the file '
+    'used to print the final network parameters.')
+flags.DEFINE_bool('load_net', False, 'If True, then begin by loading the '
+    'network from a file.')
+flags.DEFINE_string('load_path', './network.pt', 'Path and name for the file '
+    'used to print the final network parameters.')
 
 def main(argv):
   del argv
@@ -75,6 +83,9 @@ def main(argv):
   layers_list = networks.create_linear_layers(ninput, layer_widths, 1)
   net = networks.LinearNet(layers_list)
 
+  if FLAGS.load_net:
+    net.load(FLAGS.load_path)
+
   criterion = nn.L1Loss()
   optimizer = optim.Adam(net.parameters(), lr=FLAGS.lr, amsgrad=False)
 
@@ -88,12 +99,15 @@ def main(argv):
     batch_size=FLAGS.batch_size
   )
 
-  networks.print_net_accuracy(
-    net,
-    data_train,
-    data_test,
-    criterion
-  )
+  if FLAGS.save_net:
+    net.save(FLAGS.save_path)
+
+  #networks.print_net_accuracy(
+  #  net,
+  #  data_train,
+  #  data_test,
+  #  criterion
+  #)
 
 if __name__ == '__main__':
   app.run(main)

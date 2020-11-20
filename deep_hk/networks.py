@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
@@ -13,6 +14,13 @@ class LinearNet(nn.Module):
     # output layer
     x = self.layers[-1](x)
     return x
+
+  def save(self, path):
+    torch.save(self.state_dict(), path)
+
+  def load(self, path):
+    self.load_state_dict(torch.load(path))
+    self.eval()
 
 def create_linear_layers(num_input, num_hidden, num_output):
   layers_list = []
