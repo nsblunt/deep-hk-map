@@ -34,7 +34,17 @@ def create_linear_layers(num_input, num_hidden, num_output):
 
   return layers_list
 
-def train(net, data_train, data_test, criterion, optimizer, nepochs, batch_size):
+def train(net,
+          data_train,
+          data_test,
+          criterion,
+          optimizer,
+          nepochs,
+          batch_size,
+          save_net=False,
+          save_root='./network',
+          save_net_every=100):
+
   print('# 1. Epoch' + 6*' ' + '2. Loss')
 
   data_loader = DataLoader(data_train, batch_size=batch_size, shuffle=False,
@@ -56,6 +66,13 @@ def train(net, data_train, data_test, criterion, optimizer, nepochs, batch_size)
       nbatches += 1
     av_loss = total_loss/nbatches
     print('{:10d}   {:10.6f}'.format(epoch, av_loss), flush=True)
+
+    if save_net:
+      if epoch % save_net_every == save_net_every-1:
+        nepochs_done = epoch+1
+        filename = save_root + '_' + str(nepochs_done) + '.pt'
+        net.save(filename)
+
   print(flush=True)
 
 def print_net_accuracy(net, data_train, data_test, criterion):

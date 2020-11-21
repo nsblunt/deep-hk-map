@@ -37,14 +37,22 @@ flags.DEFINE_float('lr', 0.001, 'The learning rate for the optimizer.')
 
 flags.DEFINE_list('layer_widths', [100], 'The number of hidden units in '
     'each layer of the network, input as comma-separated values.')
-flags.DEFINE_bool('save_net', True, 'If True, then save the final trained '
-    'network to a file.')
-flags.DEFINE_string('save_path', './network.pt', 'Path and name for the file '
-    'used to print the final network parameters.')
+
+flags.DEFINE_bool('save_final_net', True, 'If True, then save the final '
+    'trained network to a file.')
+flags.DEFINE_string('save_final_path', './network.pt', 'Path and name '
+    'for the file used to print the final network parameters.')
+flags.DEFINE_bool('save_net', False, 'If True, then save the network '
+    'at regular intervals during training.')
+flags.DEFINE_string('save_root', './network', 'Path and root for the '
+    'files used to print the network parameters, at regular intervals '
+    'during training.')
+flags.DEFINE_integer('save_net_every', 100, 'The interval at which to '
+    'save the network parameters to a file.')
 flags.DEFINE_bool('load_net', False, 'If True, then begin by loading the '
     'network from a file.')
-flags.DEFINE_string('load_path', './network.pt', 'Path and name for the file '
-    'used to print the final network parameters.')
+flags.DEFINE_string('load_path', './network.pt', 'Path and name for the '
+    'file used to print the final network parameters.')
 
 flag_dict = FLAGS.flag_values_dict()
 # Dictionary of input variables:
@@ -54,7 +62,7 @@ def main(argv):
   del argv
 
   # Print the inputs variables that specify the simulation
-  print(json.dumps(flag_dict_input, indent=1), '\n')
+  print(json.dumps(flag_dict_input, indent=1), '\n', flush=True)
 
   sys = SpinlessHubbard(
     U=FLAGS.U,
@@ -109,11 +117,14 @@ def main(argv):
     criterion,
     optimizer,
     nepochs=FLAGS.nepochs,
-    batch_size=FLAGS.batch_size
+    batch_size=FLAGS.batch_size,
+    save_net=FLAGS.save_net,
+    save_root=FLAGS.save_root,
+    save_net_every=FLAGS.save_net_every
   )
 
-  if FLAGS.save_net:
-    net.save(FLAGS.save_path)
+  if FLAGS.save_final_net:
+    net.save(FLAGS.save_final_path)
 
   #networks.print_net_accuracy(
   #  net,
