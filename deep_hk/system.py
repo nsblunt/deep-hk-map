@@ -5,7 +5,15 @@ import random
 class SpinlessHubbard:
   """Hamiltonian for a spinless Hubbard model."""
 
-  def __init__(self, U, t, mu, nsites, fixed_nparticles, nparticles, seed):
+  def __init__(self,
+               U,
+               t,
+               mu,
+               max_V,
+               nsites,
+               fixed_nparticles,
+               nparticles,
+               seed):
     """Initialises an object for the Hamiltonian of a spinless Hubbard model.
 
     Args:
@@ -15,6 +23,9 @@ class SpinlessHubbard:
         The hopping amplitude parameter
       mu: float
         The chemical potential
+      max_V: float
+        The maximum absolute value of the potential applied to each
+        site (when generating randon potentials)
       nsites: int
         The number of lattice sites
       fixed_nparticles: bool
@@ -41,6 +52,7 @@ class SpinlessHubbard:
     self.U = U
     self.t = t
     self.mu = mu
+    self.max_V = max_V
     self.nsites = nsites
     self.fixed_nparticles = fixed_nparticles
     self.nparticles = nparticles
@@ -192,7 +204,7 @@ class SpinlessHubbard:
     """
     V = np.zeros( self.nsites )
     for i in range(self.nsites):
-      V[i] = random.uniform(-0.5, 0.5)
+      V[i] = random.uniform(-self.max_V, self.max_V)
     return V
 
   def add_potential_to_hamil(self, V):

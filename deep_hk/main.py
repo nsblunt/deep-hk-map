@@ -18,6 +18,8 @@ flags.DEFINE_integer('nparticles', 2, 'Number of particles.')
 flags.DEFINE_float('U', 1.0, 'Parameter U in the spinless Hubbard model.')
 flags.DEFINE_float('t', 1.0, 'Parameter t in the spinless Hubbard model.')
 flags.DEFINE_float('mu', 0.0, 'Chemical potential parameter.')
+flags.DEFINE_float('max_potential', 2.0, 'The maximum absolute value of '
+    'random potentials applied on any given site.')
 flags.DEFINE_float('seed', 7, 'Seed for the random number generator.')
 flags.DEFINE_boolean(
     'fixed_nparticles', True, 'True is using a fixed number of particles. '
@@ -58,6 +60,7 @@ def main(argv):
     U=FLAGS.U,
     t=FLAGS.t,
     mu=FLAGS.mu,
+    max_V=FLAGS.max_potential,
     nsites=FLAGS.nsites,
     fixed_nparticles=FLAGS.fixed_nparticles,
     nparticles=FLAGS.nparticles,
