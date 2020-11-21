@@ -4,12 +4,15 @@ from data import Data
 from system import SpinlessHubbard
 from wave_function import WaveFunction
 import networks
+import json
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 
 FLAGS = flags.FLAGS
+flag_dict_init = FLAGS.flag_values_dict()
+
 flags.DEFINE_integer('nsites', 4, 'Number of lattice sites.')
 flags.DEFINE_integer('nparticles', 2, 'Number of particles.')
 flags.DEFINE_float('U', 1.0, 'Parameter U in the spinless Hubbard model.')
@@ -41,8 +44,15 @@ flags.DEFINE_bool('load_net', False, 'If True, then begin by loading the '
 flags.DEFINE_string('load_path', './network.pt', 'Path and name for the file '
     'used to print the final network parameters.')
 
+flag_dict = FLAGS.flag_values_dict()
+# Dictionary of input variables:
+flag_dict_input = {k: v for k, v in flag_dict.items() if k not in flag_dict_init}
+
 def main(argv):
   del argv
+
+  # Print the inputs variables that specify the simulation
+  print(json.dumps(flag_dict_input, indent=1), '\n')
 
   sys = SpinlessHubbard(
     U=FLAGS.U,
