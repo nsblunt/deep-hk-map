@@ -49,23 +49,20 @@ class Data(Dataset):
 
       self.labels[i,0] = wf.energies[0]
 
-      #sample = {'density': list(wf.density_gs), 'energy': wf.energies[0]}
-      #sample = {'density': torch_density, 'energy': wf.energies[0]}
-      #data.append(sample)
+  def save_csv(self, filename):
+    with open(filename, 'w', newline='') as csv_file:
+      writer = csv.writer(csv_file)
+      writer.writerow(['density','energy'])
+      for i in range(self.ndata):
+        writer.writerow([self.inputs[i,:].tolist(),self.labels[i,:].tolist()])
 
-  def print_data(self, data):
-    keys = data[0].keys()
-    with open('data.csv', 'w', newline='') as csv_file:
-      dict_writer = csv.DictWriter(csv_file, keys)
-      dict_writer.writeheader()
-      dict_writer.writerows(data)
-
-  def read_data(self):
-    data_in = []
-    with open('data.csv', 'r', newline='') as csv_file:
-      dict_reader = csv.DictReader(csv_file)
-      for row in dict_reader:
-        density = ast.literal_eval(row['density'])
-        energy = float(row['energy'])
-        new_dict = {'density': density, 'energy': energy}
-        data_in.append(new_dict)
+  def load_csv(self, filename):
+    self.inputs = torch.zeros(self.ndata, self.ninput, dtype=torch.float)
+    self.labels = torch.zeros(self.ndata, 1)
+    with open(filename, 'r', newline='') as csv_file:
+      reader = csv.reader(csv_file)
+      # skip the header:
+      next(reader, None)
+      for i, row in enumerate(reader):
+        self.inputs[i,:] = torch.FloatTensor(ast.literal_eval(row[0]))
+        self.labels[i,:] = torch.FloatTensor(ast.literal_eval(row[1]))

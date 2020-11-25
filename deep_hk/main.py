@@ -32,6 +32,15 @@ flags.DEFINE_integer('ntrain', 12800, 'Number of training samples to '
                       'generate.')
 flags.DEFINE_integer('ntest', 100, 'Number of test samples to generate.')
 flags.DEFINE_integer('batch_size', 128, 'Number of samples per training batch.')
+flags.DEFINE_boolean('load_train_data_csv', False, 'If true, read the training '
+    'data from a CSV file, instead of generating it.')
+flags.DEFINE_boolean('load_test_data_csv', False, 'If true, read the test '
+    'data from a CSV file, instead of generating it.')
+flags.DEFINE_boolean('save_train_data_csv', True, 'If true, save the generated '
+    'training data to a CSV file.')
+flags.DEFINE_boolean('save_test_data_csv', True, 'If true, save the generated '
+    'test data to a CSV file.')
+
 flags.DEFINE_integer('nepochs', 100, 'Number of training epochs to perform.')
 flags.DEFINE_float('lr', 0.001, 'The learning rate for the optimizer.')
 
@@ -54,14 +63,12 @@ flags.DEFINE_bool('load_net', False, 'If True, then begin by loading the '
 flags.DEFINE_string('load_path', './network.pt', 'Path and name for the '
     'file used to print the final network parameters.')
 
-flag_dict = FLAGS.flag_values_dict()
-# Dictionary of input variables:
-flag_dict_input = {k: v for k, v in flag_dict.items() if k not in flag_dict_init}
-
 def main(argv):
   del argv
 
-  # Print the inputs variables that specify the simulation
+  flag_dict = FLAGS.flag_values_dict()
+  # Dictionary of input variables:
+  flag_dict_input = {k: v for k, v in flag_dict.items() if k not in flag_dict_init}
   print(json.dumps(flag_dict_input, indent=1), '\n', flush=True)
 
   sys = SpinlessHubbard(
@@ -87,7 +94,13 @@ def main(argv):
     ndata=FLAGS.ntrain,
     input_type=FLAGS.input_type
   )
-  data_train.generate()
+  if FLAGS.load_train_data_csv:
+    data_train.load_csv('data_train.csv')
+  else:
+    data_train.generate()
+
+  if FLAGS.save_train_data_csv:
+    data_train.save_csv('data_train.csv')
 
   data_test = Data(
     system=sys,
@@ -95,7 +108,13 @@ def main(argv):
     ndata=FLAGS.ntest,
     input_type=FLAGS.input_type
   )
-  data_test.generate()
+  if FLAGS.load_test_data_csv:
+    data_test.load_csv('data_test.csv')
+  else:
+    data_test.generate()
+
+  if FLAGS.save_test_data_csv:
+    data_test.save_csv('data_test.csv')
 
   torch.manual_seed(FLAGS.seed)
 
