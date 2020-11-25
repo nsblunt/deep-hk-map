@@ -49,17 +49,17 @@ class Data(Dataset):
 
       self.labels[i,0] = wf.energies[0]
 
-  def print_data(self):
-    with open('data.csv', 'w', newline='') as csv_file:
+  def save_csv(self, filename):
+    with open(filename, 'w', newline='') as csv_file:
       writer = csv.writer(csv_file)
       writer.writerow(['density','energy'])
       for i in range(self.ndata):
         writer.writerow([self.inputs[i,:].tolist(),self.labels[i,:].tolist()])
 
-  def read_data(self):
+  def load_csv(self, filename):
     self.inputs = torch.zeros(self.ndata, self.ninput, dtype=torch.float)
     self.labels = torch.zeros(self.ndata, 1)
-    with open('data.csv', 'r', newline='') as csv_file:
+    with open(filename, 'r', newline='') as csv_file:
       reader = csv.reader(csv_file)
       # skip the header:
       next(reader, None)
