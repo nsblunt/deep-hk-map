@@ -25,9 +25,6 @@ flags.DEFINE_boolean(
     'fixed_nparticles', True, 'True is using a fixed number of particles. '
     'False if using all particle sectors.')
 
-flags.DEFINE_enum(
-    'input_type', 'potential', ['potential', 'density', '1-rdm'], 'Specify '
-    'which object we pass into the network input.')
 flags.DEFINE_integer('ntrain', 12800, 'Number of training samples to '
                       'generate.')
 flags.DEFINE_integer('ntest', 100, 'Number of test samples to generate.')
@@ -44,6 +41,12 @@ flags.DEFINE_boolean('save_test_data_csv', True, 'If true, save the generated '
 flags.DEFINE_integer('nepochs', 100, 'Number of training epochs to perform.')
 flags.DEFINE_float('lr', 0.001, 'The learning rate for the optimizer.')
 
+flags.DEFINE_enum(
+    'input_type', 'potential', ['potential', 'density', '1-rdm'], 'Specify '
+    'which object we pass into the network input.')
+flags.DEFINE_enum('output_type', 'energy',
+    ['energy', 'wave_function', 'potential', 'density', '1-rdm'],
+    'Specify which object should be output by the network.')
 flags.DEFINE_list('layer_widths', [100], 'The number of hidden units in '
     'each layer of the network, input as comma-separated values.')
 
@@ -84,15 +87,26 @@ def main(argv):
   sys.construct()
 
   if FLAGS.input_type == 'potential' or FLAGS.input_type == 'density':
-    ninput = FLAGS.nsites
+    ninput = sys.nsites
   elif FLAGS.input_type == '1-rdm':
-    ninput = FLAGS.nsites**2
+    ninput = sys.nsites**2
+
+  if FLAGS.output_type == 'energy':
+    noutput = 1
+  elif FLAGS.output_type == 'wave_function':
+    noutput = sys.ndets
+  elif FLAGS.output_type == 'potential' or FLAGS.output_type == 'density':
+    noutput = sys.nsites
+  elif FLAGS.output_type == '1-rdm':
+    noutput = sys.nsites**2
 
   data_train = Data(
     system=sys,
     ninput=ninput,
+    noutput=noutput,
     ndata=FLAGS.ntrain,
-    input_type=FLAGS.input_type
+    input_type=FLAGS.input_type,
+    output_type=FLAGS.output_type
   )
   if FLAGS.load_train_data_csv:
     data_train.load_csv('data_train.csv')
@@ -105,8 +119,10 @@ def main(argv):
   data_test = Data(
     system=sys,
     ninput=ninput,
+    noutput=noutput,
     ndata=FLAGS.ntest,
-    input_type=FLAGS.input_type
+    input_type=FLAGS.input_type,
+    output_type=FLAGS.output_type
   )
   if FLAGS.load_test_data_csv:
     data_test.load_csv('data_test.csv')
@@ -120,7 +136,7 @@ def main(argv):
 
   layer_widths = [int(s) for s in FLAGS.layer_widths]
 
-  layers_list = networks.create_linear_layers(ninput, layer_widths, 1)
+  layers_list = networks.create_linear_layers(ninput, layer_widths, noutput)
   net = networks.LinearNet(layers_list)
 
   if FLAGS.load_net:

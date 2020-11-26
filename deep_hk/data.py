@@ -7,11 +7,20 @@ import csv
 
 class Data(Dataset):
 
-  def __init__(self, system, ninput, ndata, input_type='potential'):
+  def __init__(self,
+               system,
+               ninput,
+               noutput,
+               ndata,
+               input_type='potential',
+               output_type='energy'):
+
     self.sys = system
     self.ninput = ninput
+    self.noutput = noutput
     self.ndata = ndata
     self.input_type = input_type
+    self.output_type = output_type
 
     self.inputs = None
     self.labels = None
@@ -25,7 +34,7 @@ class Data(Dataset):
   def generate(self):
     sys = self.sys
     self.inputs = torch.zeros(self.ndata, self.ninput, dtype=torch.float)
-    self.labels = torch.zeros(self.ndata, 1)
+    self.labels = torch.zeros(self.ndata, self.noutput, dtype=torch.float)
 
     for i in range(self.ndata):
       V = sys.gen_rand_potential()
@@ -47,7 +56,16 @@ class Data(Dataset):
         wf.calc_rdm1_gs()
         self.inputs[i,:] = torch.from_numpy(wf.rdm1_gs.flatten())
 
-      self.labels[i,0] = wf.energies[0]
+      if self.output_type == 'energy':
+        self.labels[i,:] = wf.energies[0]
+      elif self.output_type == 'wave_function':
+        self.labels[i,:] = torch.from_numpy(wf.coeffs[:,0])
+      elif self.input_type == 'potential':
+        self.labels[i,:] = torch.from_numpy(V)
+      elif self.input_type == 'density':
+        self.labels[i,:] = torch.from_numpy(wf.density_gs)
+      elif self.input_type == '1-rdm':
+        self.labels[i,:] = torch.from_numpy(wf.rdm1_gs.flatten())
 
   def save_csv(self, filename):
     with open(filename, 'w', newline='') as csv_file:
