@@ -72,7 +72,7 @@ class Data(Dataset):
   def save_csv(self, filename):
     with open(filename, 'w', newline='') as csv_file:
       writer = csv.writer(csv_file)
-      writer.writerow(['density','energy'])
+      writer.writerow([self.input_type, self.output_type])
       for i in range(self.ndata):
         writer.writerow([self.inputs[i,:].tolist(),self.labels[i,:].tolist()])
 
