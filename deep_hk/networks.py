@@ -75,6 +75,12 @@ def train(net,
 
   print(flush=True)
 
+def calc_output_norms(outputs):
+  norms = []
+  for row in outputs:
+    norms.append(torch.norm(row))
+  return norms
+
 def print_net_accuracy(net, data_train, data_test, criterion):
   # apply network to the training data
   outputs_train = net(data_train.inputs)
@@ -86,8 +92,13 @@ def print_net_accuracy(net, data_train, data_test, criterion):
   test_loss = criterion(outputs_test, data_test.labels)
   print('Test loss: {:.5f}\n'.format(test_loss))
 
+  output_norms = calc_output_norms(outputs_test)
+  labels_norms = calc_output_norms(data_test.labels)
+
   # print the exact labels against the predicted labels for the test data
-  print('# 1. Index' + 10*' ' + '2. Exact' + 6*' ' + '3. Predicted')
+  print('# 1. Index' + 10*' ' + '2. Exact' + 6*' ' + '3. Predicted' + 5*' ' +
+         '4. Exact_Norm' + 3*' ' + '5. Predicted_Norm')
   for i in range(data_test.ndata):
-    print('{:10d}   {: .8e}   {: .8e}'.format(i,
-        float(data_test.labels[i][0]), float(outputs_test[i][0])))
+    print('{:10d}   {: .8e}   {: .8e}   {: .8e}     {: .8e}'.format(i,
+        float(data_test.labels[i][0]), float(outputs_test[i][0]),
+        float(labels_norms[i]), float(output_norms[i])))

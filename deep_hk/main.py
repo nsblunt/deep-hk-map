@@ -161,12 +161,12 @@ def main(argv):
   if FLAGS.save_final_net:
     net.save(FLAGS.save_final_path)
 
-  #networks.print_net_accuracy(
-  #  net,
-  #  data_train,
-  #  data_test,
-  #  criterion
-  #)
+  networks.print_net_accuracy(
+    net,
+    data_train,
+    data_test,
+    criterion
+  )
 
 if __name__ == '__main__':
   app.run(main)
