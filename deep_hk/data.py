@@ -60,11 +60,13 @@ class Data(Dataset):
         self.labels[i,:] = wf.energies[0]
       elif self.output_type == 'wave_function':
         self.labels[i,:] = torch.from_numpy(wf.coeffs[:,0])
-      elif self.input_type == 'potential':
+      elif self.output_type == 'potential':
         self.labels[i,:] = torch.from_numpy(V)
-      elif self.input_type == 'density':
+      elif self.output_type == 'density':
+        wf.calc_gs_density()
         self.labels[i,:] = torch.from_numpy(wf.density_gs)
-      elif self.input_type == '1-rdm':
+      elif self.output_type == '1-rdm':
+        wf.calc_rdm1_gs()
         self.labels[i,:] = torch.from_numpy(wf.rdm1_gs.flatten())
 
   def save_csv(self, filename):
