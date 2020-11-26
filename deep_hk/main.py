@@ -91,10 +91,12 @@ def main(argv):
   elif FLAGS.input_type == '1-rdm':
     ninput = sys.nsites**2
 
+  wf_output = False
   if FLAGS.output_type == 'energy':
     noutput = 1
   elif FLAGS.output_type == 'wave_function':
     noutput = sys.ndets
+    wf_output = True
   elif FLAGS.output_type == 'potential' or FLAGS.output_type == 'density':
     noutput = sys.nsites
   elif FLAGS.output_type == '1-rdm':
@@ -136,7 +138,12 @@ def main(argv):
 
   layer_widths = [int(s) for s in FLAGS.layer_widths]
 
-  layers_list = networks.create_linear_layers(ninput, layer_widths, noutput)
+  layers_list = networks.create_linear_layers(
+      ninput,
+      layer_widths,
+      noutput,
+      wave_function_output = wf_output
+  )
   net = networks.LinearNet(layers_list)
 
   if FLAGS.load_net:
