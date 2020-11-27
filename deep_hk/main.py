@@ -61,18 +61,18 @@ flags.DEFINE_enum('output_type', 'energy',
 flags.DEFINE_list('layer_widths', [100], 'The number of hidden units in '
     'each layer of the network, input as comma-separated values.')
 
-flags.DEFINE_bool('save_final_net', True, 'If True, then save the final '
+flags.DEFINE_boolean('save_final_net', True, 'If True, then save the final '
     'trained network to a file.')
 flags.DEFINE_string('save_final_path', './network.pt', 'Path and name '
     'for the file used to print the final network parameters.')
-flags.DEFINE_bool('save_net', False, 'If True, then save the network '
+flags.DEFINE_boolean('save_net', False, 'If True, then save the network '
     'at regular intervals during training.')
 flags.DEFINE_string('save_root', './network', 'Path and root for the '
     'files used to print the network parameters, at regular intervals '
     'during training.')
 flags.DEFINE_integer('save_net_every', 100, 'The interval at which to '
     'save the network parameters to a file.')
-flags.DEFINE_bool('load_net', False, 'If True, then begin by loading the '
+flags.DEFINE_boolean('load_net', False, 'If True, then begin by loading the '
     'network from a file.')
 flags.DEFINE_string('load_path', './network.pt', 'Path and name for the '
     'file used to print the final network parameters.')
@@ -86,14 +86,14 @@ def main(argv):
   print(json.dumps(flag_dict_input, indent=1), '\n', flush=True)
 
   sys = SpinlessHubbard(
-    U=FLAGS.U,
-    t=FLAGS.t,
-    mu=FLAGS.mu,
-    max_V=FLAGS.max_potential,
-    nsites=FLAGS.nsites,
-    fixed_nparticles=FLAGS.fixed_nparticles,
-    nparticles=FLAGS.nparticles,
-    seed=FLAGS.seed
+      U=FLAGS.U,
+      t=FLAGS.t,
+      mu=FLAGS.mu,
+      max_V=FLAGS.max_potential,
+      nsites=FLAGS.nsites,
+      fixed_nparticles=FLAGS.fixed_nparticles,
+      nparticles=FLAGS.nparticles,
+      seed=FLAGS.seed
   )
   sys.construct()
 
@@ -115,12 +115,12 @@ def main(argv):
 
   # -- training data ------
   data_train = Data(
-    system=sys,
-    ninput=ninput,
-    noutput=noutput,
-    ndata=FLAGS.ntrain,
-    input_type=FLAGS.input_type,
-    output_type=FLAGS.output_type
+      system=sys,
+      ninput=ninput,
+      noutput=noutput,
+      ndata=FLAGS.ntrain,
+      input_type=FLAGS.input_type,
+      output_type=FLAGS.output_type
   )
   if FLAGS.load_train_data_csv:
     data_train.load_csv('data_train.csv')
@@ -135,12 +135,12 @@ def main(argv):
   # -- validation data ------
   if FLAGS.nvalidation > 0:
     data_valid = Data(
-      system=sys,
-      ninput=ninput,
-      noutput=noutput,
-      ndata=FLAGS.nvalidation,
-      input_type=FLAGS.input_type,
-      output_type=FLAGS.output_type
+        system=sys,
+        ninput=ninput,
+        noutput=noutput,
+        ndata=FLAGS.nvalidation,
+        input_type=FLAGS.input_type,
+        output_type=FLAGS.output_type
     )
     if FLAGS.load_valid_data_csv:
       data_valid.load_csv('data_valid.csv')
@@ -156,12 +156,12 @@ def main(argv):
 
   # -- test data ------
   data_test = Data(
-    system=sys,
-    ninput=ninput,
-    noutput=noutput,
-    ndata=FLAGS.ntest,
-    input_type=FLAGS.input_type,
-    output_type=FLAGS.output_type
+      system=sys,
+      ninput=ninput,
+      noutput=noutput,
+      ndata=FLAGS.ntest,
+      input_type=FLAGS.input_type,
+      output_type=FLAGS.output_type
   )
   if FLAGS.load_test_data_csv:
     data_test.load_csv('data_test.csv')
@@ -196,34 +196,34 @@ def main(argv):
   optimizer = optim.Adam(net.parameters(), lr=FLAGS.lr, amsgrad=False)
 
   train.train(
-    net,
-    data_train,
-    data_valid,
-    data_test,
-    criterion,
-    optimizer,
-    nepochs=FLAGS.nepochs,
-    batch_size=FLAGS.batch_size,
-    save_net=FLAGS.save_net,
-    save_root=FLAGS.save_root,
-    save_net_every=FLAGS.save_net_every
+      net=net,
+      data_train=data_train,
+      data_validation=data_valid,
+      data_test=data_test,
+      criterion=criterion,
+      optimizer=optimizer,
+      nepochs=FLAGS.nepochs,
+      batch_size=FLAGS.batch_size,
+      save_net=FLAGS.save_net,
+      save_root=FLAGS.save_root,
+      save_net_every=FLAGS.save_net_every
   )
 
   if FLAGS.save_final_net:
     net.save(FLAGS.save_final_path)
 
   train.print_net_accuracy(
-    net,
-    data_train,
-    data_test,
-    criterion
+      net,
+      data_train,
+      data_test,
+      criterion
   )
 
   data_label = 0
   train.print_data_comparison(
-    net,
-    data_test,
-    data_label
+      net,
+      data_test,
+      data_label
   )
 
 if __name__ == '__main__':

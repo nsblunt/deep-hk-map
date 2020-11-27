@@ -40,15 +40,15 @@ class Data(Dataset):
 
     for i in range(self.ndata):
       V = sys.gen_rand_potential(
-        const_potential_sum,
-        potential_sum_val
+          const_potential_sum,
+          potential_sum_val
       )
       self.potentials.append(V)
       sys.add_potential_to_hamil(V)
       
       wf = WaveFunction(
-        nsites=sys.nsites,
-        dets=sys.dets
+          nsites=sys.nsites,
+          dets=sys.dets
       )
 
       wf.solve_eigenvalue(sys.hamil)
