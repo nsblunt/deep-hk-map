@@ -22,7 +22,7 @@ def train(net,
           save_root='./network',
           save_net_every=100):
 
-  print('# 1. Epoch' + 6*' ' + '2. Loss')
+  print('# 1. Epoch' + 8*' ' + '2. Loss')
 
   data_loader = DataLoader(data_train, batch_size=batch_size, shuffle=False,
                             num_workers=0)
@@ -36,14 +36,13 @@ def train(net,
       optimizer.zero_grad()
       batch_outputs = net(batch_inputs)
       loss = criterion(batch_outputs, batch_labels)
-      #loss = new_loss(batch_outputs, batch_labels)
       loss.backward()
       optimizer.step()
 
       total_loss += loss.item()
       nbatches += 1
     av_loss = total_loss/nbatches
-    print('{:10d}   {:10.6f}'.format(epoch, av_loss), flush=True)
+    print('{:10d}   {:12.8f}'.format(epoch, av_loss), flush=True)
 
     if save_net:
       if epoch % save_net_every == save_net_every-1:
@@ -63,12 +62,12 @@ def print_net_accuracy(net, data_train, data_test, criterion):
   # apply network to the training data
   outputs_train = net(data_train.inputs)
   train_loss = criterion(outputs_train, data_train.labels)
-  print('Training loss: {:.5f}'.format(train_loss))
+  print('Training loss: {:.8f}'.format(train_loss))
 
   # apply network to the test data
   outputs_test = net(data_test.inputs)
   test_loss = criterion(outputs_test, data_test.labels)
-  print('Test loss: {:.5f}\n'.format(test_loss))
+  print('Test loss: {:.8f}\n'.format(test_loss))
 
   output_norms = calc_output_norms(outputs_test)
   labels_norms = calc_output_norms(data_test.labels)
