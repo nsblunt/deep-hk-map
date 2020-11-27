@@ -90,15 +90,16 @@ def print_net_accuracy(net, data_train, data_test, criterion):
 
 def print_data_comparison(net, data, data_label):
   print('\nComparing the exact output to the predicted output for a '
-        'single test example...\n')
+        'single test example...')
 
-  print('Potential used:')
-  print('# 1. Site' + 6*' ' + '2. Potential')
-  for i in range(data.sys.nsites):
-    print('{:9d}   {: .8e}'.format(
-        i,
-        data.potentials[data_label][i],
-    ))
+  if data.potentials is not None:
+    print('\nPotential used:')
+    print('# 1. Site' + 6*' ' + '2. Potential')
+    for i in range(data.sys.nsites):
+      print('{:9d}   {: .8e}'.format(
+          i,
+          data.potentials[data_label][i],
+      ))
 
   outputs = net(data.inputs)
   print('\n# 1. Det. label' + 10*' ' + '2. Exact' + 6*' ' + '3. Predicted')
