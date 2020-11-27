@@ -21,7 +21,7 @@ flags.DEFINE_float('t', 1.0, 'Parameter t in the spinless Hubbard model.')
 flags.DEFINE_float('mu', 0.0, 'Chemical potential parameter.')
 flags.DEFINE_float('max_potential', 2.0, 'The maximum absolute value of '
     'random potentials applied on any given site.')
-flags.DEFINE_float('seed', 7, 'Seed for the random number generator.')
+flags.DEFINE_integer('seed', 7, 'Seed for the random number generator.')
 flags.DEFINE_boolean(
     'fixed_nparticles', True, 'True is using a fixed number of particles. '
     'False if using all particle sectors.')
