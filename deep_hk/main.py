@@ -85,6 +85,8 @@ def main(argv):
   flag_dict_input = {k: v for k, v in flag_dict.items() if k not in flag_dict_init}
   print(json.dumps(flag_dict_input, indent=1), '\n', flush=True)
 
+  torch.manual_seed(FLAGS.seed)
+
   sys = SpinlessHubbard(
       U=FLAGS.U,
       t=FLAGS.t,
@@ -120,17 +122,13 @@ def main(argv):
       noutput=noutput,
       ndata=FLAGS.ntrain,
       input_type=FLAGS.input_type,
-      output_type=FLAGS.output_type
+      output_type=FLAGS.output_type,
+      load=FLAGS.load_train_data_csv,
+      save=FLAGS.save_train_data_csv,
+      path='data_train.csv',
+      const_potential_sum=FLAGS.const_potential_sum,
+      potential_sum_val=FLAGS.potential_sum_val
   )
-  if FLAGS.load_train_data_csv:
-    data_train.load_csv('data_train.csv')
-  else:
-    data_train.generate(
-        const_potential_sum=FLAGS.const_potential_sum,
-        potential_sum_val=FLAGS.potential_sum_val
-    )
-  if FLAGS.save_train_data_csv:
-    data_train.save_csv('data_train.csv')
 
   # -- validation data ------
   if FLAGS.nvalidation > 0:
@@ -140,17 +138,13 @@ def main(argv):
         noutput=noutput,
         ndata=FLAGS.nvalidation,
         input_type=FLAGS.input_type,
-        output_type=FLAGS.output_type
+        output_type=FLAGS.output_type,
+        load=FLAGS.load_valid_data_csv,
+        save=FLAGS.save_valid_data_csv,
+        path='data_valid.csv',
+        const_potential_sum=FLAGS.const_potential_sum,
+        potential_sum_val=FLAGS.potential_sum_val
     )
-    if FLAGS.load_valid_data_csv:
-      data_valid.load_csv('data_valid.csv')
-    else:
-      data_valid.generate(
-          const_potential_sum=FLAGS.const_potential_sum,
-          potential_sum_val=FLAGS.potential_sum_val
-    )
-    if FLAGS.save_valid_data_csv:
-      data_valid.save_csv('data_valid.csv')
   else:
     data_valid = None
 
@@ -161,22 +155,15 @@ def main(argv):
       noutput=noutput,
       ndata=FLAGS.ntest,
       input_type=FLAGS.input_type,
-      output_type=FLAGS.output_type
+      output_type=FLAGS.output_type,
+      load=FLAGS.load_test_data_csv,
+      save=FLAGS.save_test_data_csv,
+      path='data_test.csv',
+      const_potential_sum=FLAGS.const_potential_sum,
+      potential_sum_val=FLAGS.potential_sum_val
   )
-  if FLAGS.load_test_data_csv:
-    data_test.load_csv('data_test.csv')
-  else:
-    data_test.generate(
-        const_potential_sum=FLAGS.const_potential_sum,
-        potential_sum_val=FLAGS.potential_sum_val
-    )
-  if FLAGS.save_test_data_csv:
-    data_test.save_csv('data_test.csv')
-
-  torch.manual_seed(FLAGS.seed)
 
   layer_widths = [int(s) for s in FLAGS.layer_widths]
-
   layers_list = networks.create_linear_layers(
       ninput,
       layer_widths,

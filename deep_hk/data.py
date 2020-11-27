@@ -13,7 +13,12 @@ class Data(Dataset):
                noutput,
                ndata,
                input_type='potential',
-               output_type='energy'):
+               output_type='energy',
+               load=False,
+               save=True,
+               path='data.csv',
+               const_potential_sum=False,
+               potential_sum_val=0.0):
 
     self.sys = system
     self.ninput = ninput
@@ -25,6 +30,17 @@ class Data(Dataset):
     self.inputs = None
     self.labels = None
     self.potentials = None
+
+    if load:
+      self.load_csv(path)
+    else:
+      self.generate(
+          const_potential_sum=const_potential_sum,
+          potential_sum_val=potential_sum_val
+      )
+
+    if save:
+      self.save_csv(path)
 
   def __len__(self):
     return len(self.labels)
