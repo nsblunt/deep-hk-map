@@ -24,8 +24,12 @@ def train(net,
 
   print('# 1. Epoch' + 8*' ' + '2. Loss')
 
-  data_loader = DataLoader(data_train, batch_size=batch_size, shuffle=False,
-                            num_workers=0)
+  data_loader = DataLoader(
+      data_train,
+      batch_size=batch_size,
+      shuffle=False,
+      num_workers=0
+  )
 
   # train network
   for epoch in range(nepochs):
@@ -73,9 +77,35 @@ def print_net_accuracy(net, data_train, data_test, criterion):
   labels_norms = calc_output_norms(data_test.labels)
 
   # print the exact labels against the predicted labels for the test data
-  print('# 1. Index' + 10*' ' + '2. Exact' + 6*' ' + '3. Predicted' + 5*' ' +
-         '4. Exact_Norm' + 3*' ' + '5. Predicted_Norm')
+  print('# 1. Data label' + 10*' ' + '2. Exact' + 6*' ' + '3. Predicted' + 
+         5*' ' + '4. Exact norm' + 2*' ' + '5. Predicted norm')
   for i in range(data_test.ndata):
-    print('{:10d}   {: .8e}   {: .8e}   {: .8e}     {: .8e}'.format(i,
-        float(data_test.labels[i][0]), float(outputs_test[i][0]),
-        float(labels_norms[i]), float(output_norms[i])))
+    print('{:15d}   {: .8e}   {: .8e}   {: .8e}    {: .8e}'.format(
+        i,
+        float(data_test.labels[i][0]),
+        float(outputs_test[i][0]),
+        float(labels_norms[i]),
+        float(output_norms[i])
+    ))
+
+def print_data_comparison(net, data, data_label):
+  print('\nComparing the exact output to the predicted output for a '
+        'single test example...')
+
+  if data.potentials is not None:
+    print('\nPotential used:')
+    print('# 1. Site' + 6*' ' + '2. Potential')
+    for i in range(data.sys.nsites):
+      print('{:9d}   {: .8e}'.format(
+          i,
+          data.potentials[data_label][i],
+      ))
+
+  outputs = net(data.inputs)
+  print('\n# 1. Det. label' + 10*' ' + '2. Exact' + 6*' ' + '3. Predicted')
+  for i in range(data.noutput):
+    print('{:15d}   {: .8e}   {: .8e}'.format(
+        i,
+        float(data.labels[data_label][i]),
+        float(outputs[data_label][i])
+    ))
