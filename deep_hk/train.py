@@ -13,6 +13,7 @@ class Infidelity(nn.Module):
 
 def train(net,
           data_train,
+          data_validation,
           data_test,
           criterion,
           optimizer,
@@ -22,7 +23,10 @@ def train(net,
           save_root='./network',
           save_net_every=100):
 
-  print('# 1. Epoch' + 8*' ' + '2. Loss')
+  if data_validation is None:
+    print('# 1. Epoch' + 2*' ' + '2. Train. Loss')
+  else:
+    print('# 1. Epoch' + 2*' ' + '2. Train. Loss' + 2*' ' + '3. Valid. loss')
 
   data_loader = DataLoader(
       data_train,
@@ -46,7 +50,18 @@ def train(net,
       total_loss += loss.item()
       nbatches += 1
     av_loss = total_loss/nbatches
-    print('{:10d}   {:12.8f}'.format(epoch, av_loss), flush=True)
+
+    if data_validation is None:
+      print('{:10d}    {:12.8f}'.format(epoch, av_loss), flush=True)
+    else:
+      # calculate loss for validation data
+      valid_outputs = net(data_validation.inputs)
+      valid_loss = criterion(valid_outputs, data_validation.labels)
+      print('{:10d}    {:12.8f}    {:12.8f}'.format(
+          epoch,
+          av_loss,
+          valid_loss
+      ), flush=True)
 
     if save_net:
       if epoch % save_net_every == save_net_every-1:

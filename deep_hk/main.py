@@ -27,15 +27,21 @@ flags.DEFINE_boolean(
     'False if using all particle sectors.')
 
 flags.DEFINE_integer('ntrain', 12800, 'Number of training samples to '
-                      'generate.')
+    'generate.')
+flags.DEFINE_integer('nvalidation', 0, 'Number of validation samples to '
+    'generate.')
 flags.DEFINE_integer('ntest', 100, 'Number of test samples to generate.')
 flags.DEFINE_integer('batch_size', 128, 'Number of samples per training batch.')
 flags.DEFINE_boolean('load_train_data_csv', False, 'If true, read the training '
+    'data from a CSV file, instead of generating it.')
+flags.DEFINE_boolean('load_valid_data_csv', False, 'If true, read the validation '
     'data from a CSV file, instead of generating it.')
 flags.DEFINE_boolean('load_test_data_csv', False, 'If true, read the test '
     'data from a CSV file, instead of generating it.')
 flags.DEFINE_boolean('save_train_data_csv', True, 'If true, save the generated '
     'training data to a CSV file.')
+flags.DEFINE_boolean('save_valid_data_csv', True, 'If true, save the generated '
+    'validation data to a CSV file.')
 flags.DEFINE_boolean('save_test_data_csv', True, 'If true, save the generated '
     'test data to a CSV file.')
 
@@ -103,6 +109,7 @@ def main(argv):
   elif FLAGS.output_type == '1-rdm':
     noutput = sys.nsites**2
 
+  # -- training data ------
   data_train = Data(
     system=sys,
     ninput=ninput,
@@ -119,6 +126,27 @@ def main(argv):
   if FLAGS.save_train_data_csv:
     data_train.save_csv('data_train.csv')
 
+  # -- validation data ------
+  if FLAGS.nvalidation > 0:
+    data_valid = Data(
+      system=sys,
+      ninput=ninput,
+      noutput=noutput,
+      ndata=FLAGS.nvalidation,
+      input_type=FLAGS.input_type,
+      output_type=FLAGS.output_type
+    )
+    if FLAGS.load_valid_data_csv:
+      data_valid.load_csv('data_valid.csv')
+    else:
+      data_valid.generate()
+
+    if FLAGS.save_valid_data_csv:
+      data_valid.save_csv('data_valid.csv')
+  else:
+    data_valid = None
+
+  # -- test data ------
   data_test = Data(
     system=sys,
     ninput=ninput,
@@ -160,6 +188,7 @@ def main(argv):
   train.train(
     net,
     data_train,
+    data_valid,
     data_test,
     criterion,
     optimizer,
