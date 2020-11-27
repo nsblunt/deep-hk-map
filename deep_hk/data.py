@@ -24,6 +24,7 @@ class Data(Dataset):
 
     self.inputs = None
     self.labels = None
+    self.potentials = None
 
   def __len__(self):
     return len(self.labels)
@@ -35,9 +36,11 @@ class Data(Dataset):
     sys = self.sys
     self.inputs = torch.zeros(self.ndata, self.ninput, dtype=torch.float)
     self.labels = torch.zeros(self.ndata, self.noutput, dtype=torch.float)
+    self.potentials = []
 
     for i in range(self.ndata):
       V = sys.gen_rand_potential()
+      self.potentials.append(V)
       sys.add_potential_to_hamil(V)
       
       wf = WaveFunction(

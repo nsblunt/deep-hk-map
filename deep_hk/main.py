@@ -180,5 +180,12 @@ def main(argv):
     criterion
   )
 
+  data_label = 0
+  train.print_data_comparison(
+    net,
+    data_test,
+    data_label
+  )
+
 if __name__ == '__main__':
   app.run(main)
