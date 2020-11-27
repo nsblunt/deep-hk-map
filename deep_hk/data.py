@@ -81,7 +81,7 @@ class Data(Dataset):
 
   def load_csv(self, filename):
     self.inputs = torch.zeros(self.ndata, self.ninput, dtype=torch.float)
-    self.labels = torch.zeros(self.ndata, 1)
+    self.labels = torch.zeros(self.ndata, self.noutput, dtype=torch.float)
     with open(filename, 'r', newline='') as csv_file:
       reader = csv.reader(csv_file)
       # skip the header:
