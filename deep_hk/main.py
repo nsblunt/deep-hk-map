@@ -4,6 +4,7 @@ from data import Data
 from system import SpinlessHubbard
 from wave_function import WaveFunction
 import networks
+import train
 import json
 
 import torch
@@ -149,10 +150,14 @@ def main(argv):
   if FLAGS.load_net:
     net.load(FLAGS.load_path)
 
-  criterion = nn.L1Loss()
+  if wf_output:
+    criterion = train.Infidelity()
+  else:
+    criterion = nn.L1Loss()
+
   optimizer = optim.Adam(net.parameters(), lr=FLAGS.lr, amsgrad=False)
 
-  networks.train(
+  train.train(
     net,
     data_train,
     data_test,
@@ -168,7 +173,7 @@ def main(argv):
   if FLAGS.save_final_net:
     net.save(FLAGS.save_final_path)
 
-  networks.print_net_accuracy(
+  train.print_net_accuracy(
     net,
     data_train,
     data_test,
