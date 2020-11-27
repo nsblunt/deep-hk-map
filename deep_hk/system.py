@@ -222,7 +222,6 @@ class SpinlessHubbard:
       diff = potential_sum_val - sum_V
       diff_each_site = diff/self.nsites
       V += diff_each_site
-    print(sum(V))
     return V
 
   def add_potential_to_hamil(self, V):
