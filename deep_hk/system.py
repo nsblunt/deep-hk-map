@@ -194,9 +194,20 @@ class SpinlessHubbard:
   
     return 1 if par%2 == 0 else -1
 
-  def gen_rand_potential(self):
-    """Generate a random potential, where the potential on each site is a
-       random number between -0.5 and 0.5
+  def gen_rand_potential(self, const_potential_sum=False, potential_sum_val=0.0):
+    """Generate a random potential, where the potential on each site is
+       a random number between -0.5 and 0.5.
+
+       If const_potential_sum is true, then the generated potential is
+       shifted uniformly so that the total summed potential is equal to
+       potential_sum_val.
+
+    Args:
+      const_potential_sum: bool
+        If true, then uniformly shift the final potential so that the
+        summed value (over all sites) is constant.
+      potential_sum_val: float
+        The value of the summed potential, if const_potential_sum is true.
 
     Returns:
       V: numpy ndarray of size (nsites)
@@ -205,6 +216,13 @@ class SpinlessHubbard:
     V = np.zeros( self.nsites )
     for i in range(self.nsites):
       V[i] = random.uniform(-self.max_V, self.max_V)
+
+    if const_potential_sum:
+      sum_V = sum(V)
+      diff = potential_sum_val - sum_V
+      diff_each_site = diff/self.nsites
+      V += diff_each_site
+    print(sum(V))
     return V
 
   def add_potential_to_hamil(self, V):

@@ -32,14 +32,17 @@ class Data(Dataset):
   def __getitem__(self, index):
     return self.inputs[index], self.labels[index]
 
-  def generate(self):
+  def generate(self, const_potential_sum=False, potential_sum_val=0.0):
     sys = self.sys
     self.inputs = torch.zeros(self.ndata, self.ninput, dtype=torch.float)
     self.labels = torch.zeros(self.ndata, self.noutput, dtype=torch.float)
     self.potentials = []
 
     for i in range(self.ndata):
-      V = sys.gen_rand_potential()
+      V = sys.gen_rand_potential(
+        const_potential_sum,
+        potential_sum_val
+      )
       self.potentials.append(V)
       sys.add_potential_to_hamil(V)
       

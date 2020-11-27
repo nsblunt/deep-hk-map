@@ -25,6 +25,10 @@ flags.DEFINE_integer('seed', 7, 'Seed for the random number generator.')
 flags.DEFINE_boolean(
     'fixed_nparticles', True, 'True is using a fixed number of particles. '
     'False if using all particle sectors.')
+flags.DEFINE_boolean('const_potential_sum', False, 'If true, then the sum '
+    'of the applied potential is a constant value (potential_sum_val).')
+flags.DEFINE_float('potential_sum_val', 0.0, 'If const_potential_sum is '
+    'true, then this is the value of potential summed over all sites.')
 
 flags.DEFINE_integer('ntrain', 12800, 'Number of training samples to '
     'generate.')
@@ -121,8 +125,10 @@ def main(argv):
   if FLAGS.load_train_data_csv:
     data_train.load_csv('data_train.csv')
   else:
-    data_train.generate()
-
+    data_train.generate(
+        const_potential_sum=FLAGS.const_potential_sum,
+        potential_sum_val=FLAGS.potential_sum_val
+    )
   if FLAGS.save_train_data_csv:
     data_train.save_csv('data_train.csv')
 
@@ -139,8 +145,10 @@ def main(argv):
     if FLAGS.load_valid_data_csv:
       data_valid.load_csv('data_valid.csv')
     else:
-      data_valid.generate()
-
+      data_valid.generate(
+          const_potential_sum=FLAGS.const_potential_sum,
+          potential_sum_val=FLAGS.potential_sum_val
+    )
     if FLAGS.save_valid_data_csv:
       data_valid.save_csv('data_valid.csv')
   else:
@@ -158,8 +166,10 @@ def main(argv):
   if FLAGS.load_test_data_csv:
     data_test.load_csv('data_test.csv')
   else:
-    data_test.generate()
-
+    data_test.generate(
+        const_potential_sum=FLAGS.const_potential_sum,
+        potential_sum_val=FLAGS.potential_sum_val
+    )
   if FLAGS.save_test_data_csv:
     data_test.save_csv('data_test.csv')
 
