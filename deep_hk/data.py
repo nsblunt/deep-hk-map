@@ -8,9 +8,7 @@ import csv
 class Data(Dataset):
 
   def __init__(self,
-               system,
-               ninput,
-               noutput,
+               sys,
                ndata,
                input_type='potential',
                output_type='energy',
@@ -20,9 +18,7 @@ class Data(Dataset):
                const_potential_sum=False,
                potential_sum_val=0.0):
 
-    self.sys = system
-    self.ninput = ninput
-    self.noutput = noutput
+    self.sys = sys
     self.ndata = ndata
     self.input_type = input_type
     self.output_type = output_type
@@ -30,6 +26,20 @@ class Data(Dataset):
     self.inputs = None
     self.labels = None
     self.potentials = None
+
+    if input_type == 'potential' or input_type == 'density':
+      self.ninput = sys.nsites
+    elif input_type == '1-rdm':
+      self.ninput = sys.nsites**2
+
+    if output_type == 'energy':
+      self.noutput = 1
+    elif output_type == 'wave_function':
+      self.noutput = sys.ndets
+    elif output_type == 'potential' or output_type == 'density':
+      self.noutput = sys.nsites
+    elif output_type == '1-rdm':
+      self.noutput = sys.nsites**2
 
     if load:
       self.load_csv(path)

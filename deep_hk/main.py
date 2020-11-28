@@ -99,27 +99,9 @@ def main(argv):
   )
   sys.construct()
 
-  if FLAGS.input_type == 'potential' or FLAGS.input_type == 'density':
-    ninput = sys.nsites
-  elif FLAGS.input_type == '1-rdm':
-    ninput = sys.nsites**2
-
-  wf_output = False
-  if FLAGS.output_type == 'energy':
-    noutput = 1
-  elif FLAGS.output_type == 'wave_function':
-    noutput = sys.ndets
-    wf_output = True
-  elif FLAGS.output_type == 'potential' or FLAGS.output_type == 'density':
-    noutput = sys.nsites
-  elif FLAGS.output_type == '1-rdm':
-    noutput = sys.nsites**2
-
   # -- training data ------
   data_train = Data(
-      system=sys,
-      ninput=ninput,
-      noutput=noutput,
+      sys=sys,
       ndata=FLAGS.ntrain,
       input_type=FLAGS.input_type,
       output_type=FLAGS.output_type,
@@ -133,9 +115,7 @@ def main(argv):
   # -- validation data ------
   if FLAGS.nvalidation > 0:
     data_valid = Data(
-        system=sys,
-        ninput=ninput,
-        noutput=noutput,
+        sys=sys,
         ndata=FLAGS.nvalidation,
         input_type=FLAGS.input_type,
         output_type=FLAGS.output_type,
@@ -150,9 +130,7 @@ def main(argv):
 
   # -- test data ------
   data_test = Data(
-      system=sys,
-      ninput=ninput,
-      noutput=noutput,
+      sys=sys,
       ndata=FLAGS.ntest,
       input_type=FLAGS.input_type,
       output_type=FLAGS.output_type,
@@ -163,19 +141,21 @@ def main(argv):
       potential_sum_val=FLAGS.potential_sum_val
   )
 
+  ninput = data_train.ninput
+  noutput = data_train.noutput
   layer_widths = [int(s) for s in FLAGS.layer_widths]
   layers_list = networks.create_linear_layers(
       ninput,
       layer_widths,
       noutput,
-      wave_function_output = wf_output
+      wave_function_output = FLAGS.output_type == 'wave_function'
   )
   net = networks.LinearNet(layers_list)
 
   if FLAGS.load_net:
     net.load(FLAGS.load_path)
 
-  if wf_output:
+  if FLAGS.output_type == 'wave_function':
     criterion = train.Infidelity()
   else:
     criterion = nn.L1Loss()
