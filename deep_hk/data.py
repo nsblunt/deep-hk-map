@@ -46,8 +46,7 @@ class Data(Dataset):
     else:
       self.generate(
           const_potential_sum=const_potential_sum,
-          potential_sum_val=potential_sum_val
-      )
+          potential_sum_val=potential_sum_val)
 
     if save:
       self.save_csv(path)
@@ -67,15 +66,14 @@ class Data(Dataset):
     for i in range(self.ndata):
       V = sys.gen_rand_potential(
           const_potential_sum,
-          potential_sum_val
-      )
+          potential_sum_val)
+
       self.potentials.append(V)
       sys.add_potential_to_hamil(V)
       
       wf = WaveFunction(
           nsites=sys.nsites,
-          dets=sys.dets
-      )
+          dets=sys.dets)
 
       wf.solve_eigenvalue(sys.hamil)
 

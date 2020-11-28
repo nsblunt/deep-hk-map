@@ -32,8 +32,7 @@ def train(net,
       data_train,
       batch_size=batch_size,
       shuffle=False,
-      num_workers=0
-  )
+      num_workers=0)
 
   # train network
   for epoch in range(nepochs):

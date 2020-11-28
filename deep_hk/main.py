@@ -95,8 +95,7 @@ def main(argv):
       nsites=FLAGS.nsites,
       fixed_nparticles=FLAGS.fixed_nparticles,
       nparticles=FLAGS.nparticles,
-      seed=FLAGS.seed
-  )
+      seed=FLAGS.seed)
   sys.construct()
 
   # -- training data ------
@@ -109,8 +108,7 @@ def main(argv):
       save=FLAGS.save_train_data_csv,
       path='data_train.csv',
       const_potential_sum=FLAGS.const_potential_sum,
-      potential_sum_val=FLAGS.potential_sum_val
-  )
+      potential_sum_val=FLAGS.potential_sum_val)
 
   # -- validation data ------
   if FLAGS.nvalidation > 0:
@@ -123,8 +121,7 @@ def main(argv):
         save=FLAGS.save_valid_data_csv,
         path='data_valid.csv',
         const_potential_sum=FLAGS.const_potential_sum,
-        potential_sum_val=FLAGS.potential_sum_val
-    )
+        potential_sum_val=FLAGS.potential_sum_val)
   else:
     data_valid = None
 
@@ -138,8 +135,7 @@ def main(argv):
       save=FLAGS.save_test_data_csv,
       path='data_test.csv',
       const_potential_sum=FLAGS.const_potential_sum,
-      potential_sum_val=FLAGS.potential_sum_val
-  )
+      potential_sum_val=FLAGS.potential_sum_val)
 
   ninput = data_train.ninput
   noutput = data_train.noutput
@@ -148,8 +144,7 @@ def main(argv):
       ninput,
       layer_widths,
       noutput,
-      wave_function_output = FLAGS.output_type == 'wave_function'
-  )
+      wave_function_output = FLAGS.output_type == 'wave_function')
   net = networks.LinearNet(layers_list)
 
   if FLAGS.load_net:
@@ -173,8 +168,7 @@ def main(argv):
       batch_size=FLAGS.batch_size,
       save_net=FLAGS.save_net,
       save_root=FLAGS.save_root,
-      save_net_every=FLAGS.save_net_every
-  )
+      save_net_every=FLAGS.save_net_every)
 
   if FLAGS.save_final_net:
     net.save(FLAGS.save_final_path)
@@ -183,15 +177,13 @@ def main(argv):
       net,
       data_train,
       data_test,
-      criterion
-  )
+      criterion)
 
   data_label = 0
   train.print_data_comparison(
       net,
       data_test,
-      data_label
-  )
+      data_label)
 
 if __name__ == '__main__':
   app.run(main)
