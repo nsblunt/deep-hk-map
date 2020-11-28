@@ -18,16 +18,16 @@ class SpinlessHubbard:
 
     Args:
       U: float
-        The density-density interaction parameter
+        The density-density interaction parameter.
       t: float
-        The hopping amplitude parameter
+        The hopping amplitude parameter.
       mu: float
-        The chemical potential
+        The chemical potential.
       max_V: float
         The maximum absolute value of the potential applied to each
-        site (when generating randon potentials)
+        site (when generating randon potentials).
       nsites: int
-        The number of lattice sites
+        The number of lattice sites.
       fixed_nparticles: bool
         True if considering a fixed number of particles. False if
         considering all particle number sectors simultaneously.
@@ -43,11 +43,11 @@ class SpinlessHubbard:
         List of determinants which span the space under consideration.
         Each determinant is represented as a tuple holding the occupied sites.
       ndets: int
-        The total number of determinants
+        The total number of determinants.
       hamil: numpy ndarray of size (ndets, ndets)
-        Hamiltonian matrix for the spinless Hubbard model
+        Hamiltonian matrix for the spinless Hubbard model.
       hamil_diag: numpy ndarray of size (ndets)
-        The diagonal elements of the Hamiltonian matrix
+        The diagonal elements of the Hamiltonian matrix.
     """
     self.U = U
     self.t = t
@@ -70,14 +70,16 @@ class SpinlessHubbard:
     self.dets = []
 
     if self.fixed_nparticles:
-      # generate all determinants with nparticles fermions in nsites orbitals
+      # Generate all determinants with nparticles fermions in nsites
+      # orbitals.
       r = itertools.combinations(range(self.nsites), self.nparticles)
       for item in r:
         self.dets.append(item)
     else:
-      # generate all determinants of all occupations numbers, from 0 to nsites
+      # Generate all determinants of all occupations numbers, from 0 to
+      # nsites.
       for i in range(2**self.nsites):
-        # binary string representation of determinant i
+        # Binary string representation of determinant i.
         i_bin = bin(i)[2:].zfill(self.nsites)
         occ_list = [ind for ind,a in enumerate(i_bin) if a == '1']
         occ_tuple = tuple(occ_list)
@@ -103,13 +105,13 @@ class SpinlessHubbard:
         else:
           if j < i:
             continue
-          # The number of occupied sites for each determinant
+          # The number of occupied sites for each determinant.
           count_j = len(self.dets[j])
-          # The Hamiltonian only connects determinants with equal numbers of
-          # orbitals occupied
+          # The Hamiltonian only connects determinants with equal
+          # numbers of orbitals occupied.
           if count_i == count_j:
-            # Find which sites have had their occupation changed, which are
-            # the excitations
+            # Find which sites have had their occupation changed, which
+            # are the excitations.
             ind_ex_set = set(self.dets[i]).symmetric_difference(set(self.dets[j]))
             ind_ex = tuple(ind_ex_set)
             count_ex = len(ind_ex)
@@ -117,7 +119,7 @@ class SpinlessHubbard:
             # Can only have a non-zero off-diagonal element for a single
             # excitation, which is this condition:
             if count_ex == 2:
-              # If connected then we have a non-zero Hamiltonian element
+              # If connected then we have a non-zero Hamiltonian element.
               if self.connected(ind_ex):
                 par = self.parity_single(self.dets[i], self.dets[j], ind_ex)
                 self.hamil[i,j] = -self.t * par
@@ -129,7 +131,7 @@ class SpinlessHubbard:
   
     Args:
       occ_list: tuple of int
-        tuple holding all occupied sites in the determinant
+        tuple holding all occupied sites in the determinant.
     """
     nparticles = len(occ_list)
   
@@ -154,12 +156,12 @@ class SpinlessHubbard:
   
     Args:
       ind_ex: tuple of int
-        the two sites who occupation changes in the excitation
+        the two sites who occupation changes in the excitation.
     """
-    # connected if nearest neighbours
+    # Sites are connected if nearest neighbours.
     if ind_ex[1] == ind_ex[0]+1:
       return True
-    elif ind_ex[0] == 0 and ind_ex[1] == self.nsites-1: # account for periodicity
+    elif ind_ex[0] == 0 and ind_ex[1] == self.nsites-1: # (periodicity)
       return True
     else:
       return False
@@ -171,11 +173,11 @@ class SpinlessHubbard:
   
     Args:
       occ_i: tuple of int
-        tuple holding all occupied sites in determinant i
+        tuple holding all occupied sites in determinant i.
       occ_j: tuple of int
-        tuple holding all occupied sites in determinant j
+        tuple holding all occupied sites in determinant j.
       ind_ex: tuple of int
-        the two sites whose occupation changes in the excitation
+        the two sites whose occupation changes in the excitation.
     """
     if ind_ex[0] in occ_i:
       ind_i = ind_ex[0]
@@ -184,12 +186,12 @@ class SpinlessHubbard:
       ind_i = ind_ex[1]
       ind_j = ind_ex[0]
   
-    # find the positions of the two electrons involved in the lists of
-    # occupied sites
+    # Find the positions of the two electrons involved in the lists of
+    # occupied sites.
     iel = occ_i.index(ind_i)
     jel = occ_j.index(ind_j)
   
-    # if this is odd then the Hamiltonian element gains a factor of -1
+    # If this is odd then the Hamiltonian element gains a factor of -1.
     par = iel + jel
   
     return 1 if par%2 == 0 else -1
@@ -211,7 +213,7 @@ class SpinlessHubbard:
 
     Returns:
       V: numpy ndarray of size (nsites)
-        a random external potential
+        A random external potential.
     """
     V = np.zeros( self.nsites )
     for i in range(self.nsites):
@@ -229,10 +231,10 @@ class SpinlessHubbard:
 
     Args:
       V: numpy ndarray of size (nsites)
-        an external potential
+        An external potential.
     """
     for i in range(self.ndets):
-      # loop over all occupied sites in determinant i:
       self.hamil[i,i] = self.hamil_diag[i]
+      # Loop over all occupied sites in determinant i.
       for site in self.dets[i]:
         self.hamil[i,i] += V[site]

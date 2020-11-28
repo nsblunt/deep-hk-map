@@ -1,4 +1,3 @@
-from system import SpinlessHubbard
 from wave_function import WaveFunction
 from torch.utils.data import Dataset
 import torch
@@ -6,6 +5,7 @@ import ast
 import csv
 
 class Data(Dataset):
+  """Object for generating and storing training/validation/test data."""
 
   def __init__(self,
                sys,
@@ -17,6 +17,43 @@ class Data(Dataset):
                path='data.csv',
                const_potential_sum=False,
                potential_sum_val=0.0):
+    """Initialises an object for storing data to learn from.
+
+    Args:
+      sys: SpinlessHubbard object
+        The definition of the lattice model used.
+      ndata: int
+        The number of data points to be read or generated.
+      input_type: string
+        String specifying what object is passed into the network.
+      output_type: string
+        String specifying what object is passed out of the network.
+      load: bool
+        If True, then the data is read from a file.
+      save: bool
+        If True, then the generated/loaded data is saved to a file.
+      path: string
+        Path specifying where data is loaded from or saved to.
+      const_potential_sum: bool
+        If True, then generated potentials will be shifted so that the
+        total summmed potential is a constant value (potential_sum_val).
+      potential_sum_val: float
+        If const_potential_sum is True, then this is the total summed
+        value that is enforced.
+
+    Other attributes:
+      ninput: int
+        the number of values passed into the network (for each data
+        point).
+      noutput: int
+        the number of values passed out of the network.
+      inputs: torch tensor of type torch.float and size (ndata, ninput)
+        Tensor holding the input data points in its rows.
+      outputs: torch tensor of type torch.float and size (ndata, noutput)
+        Tensor holding the predicted labels in its rows.
+      potentials: list of numpy ndarrays, each of size (sys.nsites)
+        Holds the potentials applied to generate each data point.
+    """
 
     self.sys = sys
     self.ndata = ndata
@@ -52,12 +89,24 @@ class Data(Dataset):
       self.save_csv(path)
 
   def __len__(self):
+    """Return the number of data points."""
     return len(self.labels)
 
   def __getitem__(self, index):
+    """Return the input labelled by index, and the associated label."""
     return self.inputs[index], self.labels[index]
 
   def generate(self, const_potential_sum=False, potential_sum_val=0.0):
+    """Generate all data.
+
+    Args:
+      const_potential_sum: bool
+        If True, then generated potentials will be shifted so that the
+        total summed potential is a constant value (potential_sum_val).
+      potential_sum_val: float
+        If const_potential_sum is True, then this is the total summed
+        value that is enforced.
+    """
     sys = self.sys
     self.inputs = torch.zeros(self.ndata, self.ninput, dtype=torch.float)
     self.labels = torch.zeros(self.ndata, self.noutput, dtype=torch.float)
@@ -100,6 +149,12 @@ class Data(Dataset):
         self.labels[i,:] = torch.from_numpy(wf.rdm1_gs.flatten())
 
   def save_csv(self, filename):
+    """Save the data to a CSV file.
+
+    Args:
+      filename: string
+        The name of the file where data will be saved.
+    """
     with open(filename, 'w', newline='') as csv_file:
       writer = csv.writer(csv_file)
       writer.writerow([self.input_type, self.output_type])
@@ -107,6 +162,12 @@ class Data(Dataset):
         writer.writerow([self.inputs[i,:].tolist(),self.labels[i,:].tolist()])
 
   def load_csv(self, filename):
+    """Load the data from a CSV file.
+
+    Args:
+      filename: string
+        The name of the file where data will be loaded from.
+    """
     self.inputs = torch.zeros(self.ndata, self.ninput, dtype=torch.float)
     self.labels = torch.zeros(self.ndata, self.noutput, dtype=torch.float)
     with open(filename, 'r', newline='') as csv_file:

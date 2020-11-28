@@ -3,10 +3,27 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 
 class Infidelity(nn.Module):
+  """A loss function that uses the infidelity of a wave function, defined as:
+
+    I(\psi_p, psi_e) = 1 - |\langle \psi_p | \psi_e \rangle|.
+
+    In other words, unity minus the overlap of the predicted and exact wave
+    functions.
+  """
+
   def __init__(self):
+    """Initialise the object."""
     super(Infidelity, self).__init__()
 
   def forward(self, outputs, labels):
+    """Calculate the infidelity using the provided outputs and labels.
+
+    Args:
+      outputs: torch tensor
+        the batch of output data.
+      labels: torch tensor
+        the batch of labels being targeted.
+    """
     dot_products = torch.sum(outputs * labels, dim=1)
     loss = 1 - torch.mean(torch.abs(dot_products))
     return loss
@@ -22,7 +39,35 @@ def train(net,
           save_net=False,
           save_root='./network',
           save_net_every=100):
+  """Train the network.
 
+  Args:
+    net: network object
+      The neural network to be trained.
+    data_train: Data object
+      The training data.
+    data_validation: Data object
+      The validation data.
+    data_test: Data object
+      The test data.
+    criterion: torch criterion object
+      Used to measure the loss function between predicted and targeted data.
+    optimizer: torch optimizer object
+      Implements the optimization algorithm, such as Adam.
+    nepochs: int
+      The number of epochs to perform.
+    batch_size: int
+      The number of data points passed in each batch.
+    save_net: bool
+      If True, save the network state to a file at regular intervals.
+    save_root: string
+      The path and root of the filenames where networks will be saved, if
+      save_net is True.
+    save_net_every: int
+      The frequency (in epochs) at which the network will be saved to a file,
+      if save_net is True.
+  """
+  # Print the header.
   if data_validation is None:
     print('# 1. Epoch' + 2*' ' + '2. Train. Loss')
   else:
@@ -34,7 +79,7 @@ def train(net,
       shuffle=False,
       num_workers=0)
 
-  # train network
+  # Train the network.
   for epoch in range(nepochs):
     total_loss = 0.0
     nbatches = 0
@@ -53,7 +98,7 @@ def train(net,
     if data_validation is None:
       print('{:10d}    {:12.8f}'.format(epoch, av_loss), flush=True)
     else:
-      # calculate loss for validation data
+      # Calculate the loss for validation data.
       valid_outputs = net(data_validation.inputs)
       valid_loss = criterion(valid_outputs, data_validation.labels)
       print('{:10d}    {:12.8f}    {:12.8f}'.format(
@@ -70,27 +115,38 @@ def train(net,
 
   print(flush=True)
 
-def calc_output_norms(outputs):
-  norms = []
-  for row in outputs:
-    norms.append(torch.norm(row))
-  return norms
-
 def print_net_accuracy(net, data_train, data_test, criterion):
-  # apply network to the training data
+  """Calculate and print the loss for both training and test data.
+     Also, calculate the norms and print these together with the
+     training and test data values for comparison.
+
+  Args:
+    net: network object
+      The neural network to be used in the comparison.
+    data_train: Data object
+      The training data.
+    data_test: Data object
+      The test data.
+    criterion: torch criterion object
+      Used to measure the loss function between the predicted and
+      targeted data.
+  """
+  # Apply the network to the training data.
   outputs_train = net(data_train.inputs)
   train_loss = criterion(outputs_train, data_train.labels)
   print('Training loss: {:.8f}'.format(train_loss))
 
-  # apply network to the test data
+  # Apply the network to the test data.
   outputs_test = net(data_test.inputs)
   test_loss = criterion(outputs_test, data_test.labels)
   print('Test loss: {:.8f}\n'.format(test_loss))
 
-  output_norms = calc_output_norms(outputs_test)
-  labels_norms = calc_output_norms(data_test.labels)
+  output_norms = [torch.norm(row) for row in outputs_test]
+  labels_norms = [torch.norm(row) for row in data_test.labels]
 
-  # print the exact labels against the predicted labels for the test data
+  # Print the exact labels against the predicted labels for the test
+  # data. This is only done for the first element of each data point.
+  # Also print the norms of each data point.
   print('# 1. Data label' + 10*' ' + '2. Exact' + 6*' ' + '3. Predicted' + 
          5*' ' + '4. Exact norm' + 2*' ' + '5. Predicted norm')
   for i in range(data_test.ndata):
@@ -103,9 +159,21 @@ def print_net_accuracy(net, data_train, data_test, criterion):
     ))
 
 def print_data_comparison(net, data, data_label):
+  """For the requested data point, print the predicted and target values
+     for each output unit. Also, print the potential of this data point.
+
+  Args:
+    net: network object
+      The neural network to be used in the comparison.
+    data: Data object
+      Object holding a set of data points.
+    data_label:
+      The index of the data point to be considered, in the data arrays.
+  """
   print('\nComparing the exact output to the predicted output for a '
         'single test example...')
 
+  # Print the potential for this data point, if it is stored.
   if data.potentials is not None:
     print('\nPotential used:')
     print('# 1. Site' + 6*' ' + '2. Potential')
@@ -115,7 +183,11 @@ def print_data_comparison(net, data, data_label):
           data.potentials[data_label][i],
       ))
 
+  # Calculate the predicted values.
   outputs = net(data.inputs)
+
+  # Print the predicted values against the target values, for each
+  # output unit.
   print('\n# 1. Det. label' + 10*' ' + '2. Exact' + 6*' ' + '3. Predicted')
   for i in range(data.noutput):
     print('{:15d}   {: .8e}   {: .8e}'.format(

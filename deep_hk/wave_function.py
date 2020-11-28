@@ -8,37 +8,37 @@ class WaveFunction:
 
     Args:
       nsites: int
-        The number of lattice sites
+        The number of lattice sites.
       dets: list of (tuple of int)
         List of determinants which span the space under consideration.
         Each determinant is represented as a tuple holding the occupied sites.
 
     Other Attributes:
       ndets: int
-        The total number of determinants
+        The total number of determinants.
       coeffs: numpy ndarray of size (ndets, ndets)
         Array holding the energy eigenfunctions themselves. The i'th energy
         eigenstate has coefficients coeffs[:,i], with the same ordering as
         the determinants held in dets.
       energies: numpy ndarray of size (ndets)
-        The energy eigenvalues
+        The energy eigenvalues.
       density_gs: numpy ndarray of size (nsites)
-        The local density of the ground-state wave function
+        The local density of the ground-state wave function.
       corr_fn_gs: numpy ndarray of size (nsites, nsites)
         The two-point density correlation function of the ground-state
-        wave function
+        wave function.
       rdm1_gs: numpy ndarray of size (nsites, nsites)
-        One-body reduced density matrix for the ground-state wave function
+        One-body reduced density matrix for the ground-state wave function.
     """
     self.nsites = nsites
     self.dets = dets
     self.ndets = len(dets)
 
-    # from the solution of eigenvalue problem
+    # Data from the solution of eigenvalue problem.
     self.coeffs = None
     self.energies = None
 
-    # properties that can be calculated
+    # Properties that can be calculated.
     self.density_gs = None
     self.corr_fn_gs = None
     self.rdm1_gs = None
@@ -49,7 +49,7 @@ class WaveFunction:
 
     Args:
       hamil: numpy ndarray of size (ndets, ndets)
-        the Hamiltonian matrix
+        The Hamiltonian matrix.
     """
     self.energies, self.coeffs = np.linalg.eigh(hamil)
 
@@ -79,12 +79,12 @@ class WaveFunction:
     for det_1, coeff_1 in zip(self.dets, self.coeffs[:,0]):
       nel_1 = len(det_1)
 
-      # contributions for the diagonal of the density matrix:
+      # Contributions for the diagonal of the density matrix:
       coeff_sq = coeff_1**2
       for p in det_1:
         self.rdm1_gs[p,p] += coeff_sq
 
-      # contributions for the off-diagonal of the density matrix:
+      # Contributions for the off-diagonal of the density matrix:
       for det_2, coeff_2 in zip(self.dets, self.coeffs[:,0]):
         if det_2 < det_1:
           continue

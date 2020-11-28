@@ -14,6 +14,7 @@ import torch.optim as optim
 FLAGS = flags.FLAGS
 flag_dict_init = FLAGS.flag_values_dict()
 
+# Define the system.
 flags.DEFINE_integer('nsites', 4, 'Number of lattice sites.')
 flags.DEFINE_integer('nparticles', 2, 'Number of particles.')
 flags.DEFINE_float('U', 1.0, 'Parameter U in the spinless Hubbard model.')
@@ -30,12 +31,12 @@ flags.DEFINE_boolean('const_potential_sum', False, 'If true, then the sum '
 flags.DEFINE_float('potential_sum_val', 0.0, 'If const_potential_sum is '
     'true, then this is the value of potential summed over all sites.')
 
+# Define the parameters for data (training, validation, test).
 flags.DEFINE_integer('ntrain', 12800, 'Number of training samples to '
     'generate.')
 flags.DEFINE_integer('nvalidation', 0, 'Number of validation samples to '
     'generate.')
 flags.DEFINE_integer('ntest', 100, 'Number of test samples to generate.')
-flags.DEFINE_integer('batch_size', 128, 'Number of samples per training batch.')
 flags.DEFINE_boolean('load_train_data_csv', False, 'If true, read the training '
     'data from a CSV file, instead of generating it.')
 flags.DEFINE_boolean('load_valid_data_csv', False, 'If true, read the validation '
@@ -49,9 +50,12 @@ flags.DEFINE_boolean('save_valid_data_csv', True, 'If true, save the generated '
 flags.DEFINE_boolean('save_test_data_csv', True, 'If true, save the generated '
     'test data to a CSV file.')
 
+# Training parameters.
+flags.DEFINE_integer('batch_size', 128, 'Number of samples per training batch.')
 flags.DEFINE_integer('nepochs', 100, 'Number of training epochs to perform.')
 flags.DEFINE_float('lr', 0.001, 'The learning rate for the optimizer.')
 
+# Defining the network (including input/output objects).
 flags.DEFINE_enum(
     'input_type', 'potential', ['potential', 'density', '1-rdm'], 'Specify '
     'which object we pass into the network input.')
@@ -61,6 +65,7 @@ flags.DEFINE_enum('output_type', 'energy',
 flags.DEFINE_list('layer_widths', [100], 'The number of hidden units in '
     'each layer of the network, input as comma-separated values.')
 
+# Parameters regarding saving/loading the trained network.
 flags.DEFINE_boolean('save_final_net', True, 'If True, then save the final '
     'trained network to a file.')
 flags.DEFINE_string('save_final_path', './network.pt', 'Path and name '
@@ -81,7 +86,7 @@ def main(argv):
   del argv
 
   flag_dict = FLAGS.flag_values_dict()
-  # Dictionary of input variables:
+  # Dictionary of input variables (without predefined entries):
   flag_dict_input = {k: v for k, v in flag_dict.items() if k not in flag_dict_init}
   print(json.dumps(flag_dict_input, indent=1), '\n', flush=True)
 
@@ -144,7 +149,7 @@ def main(argv):
       ninput,
       layer_widths,
       noutput,
-      wave_function_output = FLAGS.output_type == 'wave_function')
+      wf_output = FLAGS.output_type == 'wave_function')
   net = networks.LinearNet(layers_list)
 
   if FLAGS.load_net:
