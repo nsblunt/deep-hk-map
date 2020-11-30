@@ -169,8 +169,8 @@ class Data(Dataset):
     with open(filename, 'w', newline='') as csv_file:
       writer = csv.writer(csv_file)
       writer.writerow([self.input_type, self.output_type])
-      for i in range(self.ndata):
-        writer.writerow([self.inputs[i,:].tolist(),self.labels[i,:].tolist()])
+      for input, label in zip(self.inputs, self.labels):
+        writer.writerow([input.tolist(),label.tolist()])
 
   def load_csv(self, filename):
     """Load the data from a CSV file.

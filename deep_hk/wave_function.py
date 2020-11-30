@@ -1,4 +1,5 @@
 import numpy as np
+from itertools import count
 
 class WaveFunction:
   """Class to store wave functions and calculate properties."""
@@ -105,8 +106,8 @@ class WaveFunction:
   def print_energies(self):
     """Print the list of energies to screen."""
     print("Energies:")
-    for i in range(self.ndets):
-      print('{:6d}  {: .8e}'.format(i, self.energies[i]))
+    for i, energy in enumerate(self.energies):
+      print('{:6d}  {: .8e}'.format(i, energy))
 
   def print_gs_density(self):
     """Print the ground-state local density. Also print the total sum of
@@ -114,9 +115,9 @@ class WaveFunction:
     """
     print("Ground-state local density:")
     total = 0.0
-    for i in range(self.nsites):
-      total += self.density_gs[i]
-      print('{:6d}  {: .8e}'.format(i, self.density_gs[i]))
+    for i, density in enumerate(self.density_gs):
+      total += density
+      print('{:6d}  {: .8e}'.format(i, density))
     print('Summation: {:6.2f}'.format(total))
 
   def print_corr_fn_gs(self):
@@ -141,10 +142,9 @@ class WaveFunction:
     """Print the ground state wave function coefficients (and corresponding
        occupation lists for each determinant) to the screen.
     """
-    print("Ground state wave function:")
-    for i in range(self.ndets):
-      occ_i = self.dets[i]
-      if abs(self.coeffs[i,0]) > 1.e-10:
-        print('{:6d}  {}  {: .8e}'.format(i, occ_i, self.coeffs[i,0]))
+    print("Ground-state wave function:")
+    for i, occ_i, coeff_i in zip(count(), self.dets, self.coeffs[:,0]):
+      if abs(coeff_i) > 1.e-10:
+        print('{:6d}  {}  {: .8e}'.format(i, occ_i, coeff_i))
       else:
         print('{:6d}  {}  {: .8e}'.format(i, occ_i, 0.0))

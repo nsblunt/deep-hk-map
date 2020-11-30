@@ -152,13 +152,14 @@ def print_net_accuracy(net, data_train, data_test, criterion):
   # Also print the norms of each data point.
   print('# 1. Data label' + 10*' ' + '2. Exact' + 6*' ' + '3. Predicted' + 
          5*' ' + '4. Exact norm' + 2*' ' + '5. Predicted norm')
-  for i in range(data_test.ndata):
+  for i, target, predicted, target_norm, predicted_norm in zip(count(),
+      data_test.labels[:,0], outputs_test[:,0], labels_norms, output_norms):
     print('{:15d}   {: .8e}   {: .8e}   {: .8e}    {: .8e}'.format(
         i,
-        float(data_test.labels[i][0]),
-        float(outputs_test[i][0]),
-        float(labels_norms[i]),
-        float(output_norms[i])
+        target,
+        predicted,
+        float(target_norm),
+        float(predicted_norm)
     ))
 
 def print_data_comparison(net, data, data_label):
@@ -180,10 +181,11 @@ def print_data_comparison(net, data, data_label):
   if data.potentials is not None:
     print('\nPotential used:')
     print('# 1. Site' + 6*' ' + '2. Potential')
-    for i in range(data.sys.nsites):
+    #for i in range(data.sys.nsites):
+    for i, potential in zip(count(), data.potentials[data_label]):
       print('{:9d}   {: .8e}'.format(
           i,
-          data.potentials[data_label][i],
+          potential,
       ))
 
   # Calculate the predicted values.
