@@ -53,6 +53,8 @@ class Data(Dataset):
         Tensor holding the predicted labels in its rows.
       potentials: list of numpy ndarrays, each of size (sys.nsites)
         Holds the potentials applied to generate each data point.
+      energies: list of floats
+        Holds the ground-state energies for each potential applied
     """
 
     self.sys = sys
@@ -63,6 +65,7 @@ class Data(Dataset):
     self.inputs = None
     self.labels = None
     self.potentials = None
+    self.energies = None
 
     if input_type == 'potential' or input_type == 'density':
       self.ninput = sys.nsites
@@ -111,13 +114,13 @@ class Data(Dataset):
     self.inputs = torch.zeros(self.ndata, self.ninput, dtype=torch.float)
     self.labels = torch.zeros(self.ndata, self.noutput, dtype=torch.float)
     self.potentials = []
+    self.energies = []
 
     for i in range(self.ndata):
       V = sys.gen_rand_potential(
           const_potential_sum,
           potential_sum_val)
 
-      self.potentials.append(V)
       sys.add_potential_to_hamil(V)
       
       wf = WaveFunction(
@@ -125,6 +128,9 @@ class Data(Dataset):
           dets=sys.dets)
 
       wf.solve_eigenvalue(sys.hamil)
+
+      self.potentials.append(V)
+      self.energies.append(wf.energies[0])
 
       if self.input_type == 'potential':
         self.inputs[i,:] = torch.from_numpy(V)

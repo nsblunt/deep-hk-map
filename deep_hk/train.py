@@ -2,6 +2,9 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
+from itertools import count
+
+
 class Infidelity(nn.Module):
   """A loss function that uses the infidelity of a wave function, defined as:
 
@@ -195,3 +198,40 @@ def print_data_comparison(net, data, data_label):
         float(data.labels[data_label][i]),
         float(outputs[data_label][i])
     ))
+
+def assess_predicted_energies(net, data, criterion):
+  """For a network that predicts the wave function as its output, this
+     function uses this output to calculate the variational energy
+     estimator, and compares these predicted energies to exact values.
+
+  Args:
+    net: network object
+      A network which outputs wave function coefficients.
+    data: Data object
+      The data that will be used in the comparison.
+    criterion: torch criterion object
+      A loss function object, to compare the predicted and exact
+      energies.
+  """
+  wf_predicted = net(data.inputs)
+  e_predicted = torch.zeros(data.ndata)
+
+  e_target = torch.FloatTensor(data.energies)
+
+  print('\n# 1. Data label' + 10*' ' + '2. Exact' + 6*' ' + '3. Predicted')
+
+  for i, wf, potential, energy_exact in zip(count(), wf_predicted,
+      data.potentials, data.energies):
+    # Calculate the energy for the predicted wave function.
+    wf_numpy = wf.detach().numpy()
+    energy = data.sys.calc_energy(wf_numpy, potential)
+    e_predicted[i] = energy
+
+    print('{:15d}   {: .8e}   {: .8e}'.format(
+        i,
+        energy,
+        energy_exact,
+    ))
+
+  loss = criterion(e_predicted, e_target)
+  print('Total loss: {:.8f}\n'.format(loss))

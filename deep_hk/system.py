@@ -196,7 +196,9 @@ class SpinlessHubbard:
   
     return 1 if par%2 == 0 else -1
 
-  def gen_rand_potential(self, const_potential_sum=False, potential_sum_val=0.0):
+  def gen_rand_potential(self,
+                         const_potential_sum=False,
+                         potential_sum_val=0.0):
     """Generate a random potential, where the potential on each site is
        a random number between -0.5 and 0.5.
 
@@ -238,3 +240,17 @@ class SpinlessHubbard:
       # Loop over all occupied sites in determinant i.
       for site in self.dets[i]:
         self.hamil[i,i] += V[site]
+
+  def calc_energy(self, wf, V):
+    """Calculate the expectation value of the Hamiltonian, with respect
+       to the provided wave function.
+
+    Args:
+      wf: numpy ndarray of size (ndets)
+        The wave function to be used in the expectation value.
+      V: numpy ndarray of size (nsites)
+        The external potential.
+    """
+    self.add_potential_to_hamil(V)
+    energy = np.dot(wf, np.matmul(self.hamil, wf))
+    return energy

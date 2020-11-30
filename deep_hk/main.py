@@ -82,6 +82,11 @@ flags.DEFINE_boolean('load_net', False, 'If True, then begin by loading the '
 flags.DEFINE_string('load_path', './network.pt', 'Path and name for the '
     'file used to print the final network parameters.')
 
+# Post-training checks.
+flags.DEFINE_boolean('assess_energy_from_wf', 'False', 'If predicting '
+    'a wave function as output, then calculate and print the associated '
+    'energies for the test data.')
+
 def main(argv):
   del argv
 
@@ -189,6 +194,12 @@ def main(argv):
       net,
       data_test,
       data_label)
+
+  if FLAGS.assess_energy_from_wf and FLAGS.output_type == 'wave_function':
+    train.assess_predicted_energies(
+        net=net,
+        data=data_test,
+        criterion=nn.L1Loss())
 
 if __name__ == '__main__':
   app.run(main)
