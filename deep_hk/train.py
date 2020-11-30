@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-
 from itertools import count
 
 
@@ -181,7 +180,6 @@ def print_data_comparison(net, data, data_label):
   if data.potentials is not None:
     print('\nPotential used:')
     print('# 1. Site' + 6*' ' + '2. Potential')
-    #for i in range(data.sys.nsites):
     for i, potential in zip(count(), data.potentials[data_label]):
       print('{:9d}   {: .8e}'.format(
           i,
@@ -226,7 +224,7 @@ def assess_predicted_energies(net, data, criterion):
       data.potentials, data.energies):
     # Calculate the energy for the predicted wave function.
     wf_numpy = wf.detach().numpy()
-    energy = data.sys.calc_energy(wf_numpy, potential)
+    energy = data.system.calc_energy(wf_numpy, potential)
     e_predicted[i] = energy
 
     print('{:15d}   {: .8e}   {: .8e}'.format(

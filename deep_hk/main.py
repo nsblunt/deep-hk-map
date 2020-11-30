@@ -97,7 +97,7 @@ def main(argv):
 
   torch.manual_seed(FLAGS.seed)
 
-  sys = SpinlessHubbard(
+  system = SpinlessHubbard(
       U=FLAGS.U,
       t=FLAGS.t,
       mu=FLAGS.mu,
@@ -106,11 +106,11 @@ def main(argv):
       fixed_nparticles=FLAGS.fixed_nparticles,
       nparticles=FLAGS.nparticles,
       seed=FLAGS.seed)
-  sys.construct()
+  system.construct()
 
   # -- training data ------
   data_train = Data(
-      sys=sys,
+      system=system,
       ndata=FLAGS.ntrain,
       input_type=FLAGS.input_type,
       output_type=FLAGS.output_type,
@@ -123,7 +123,7 @@ def main(argv):
   # -- validation data ------
   if FLAGS.nvalidation > 0:
     data_valid = Data(
-        sys=sys,
+        system=system,
         ndata=FLAGS.nvalidation,
         input_type=FLAGS.input_type,
         output_type=FLAGS.output_type,
@@ -137,7 +137,7 @@ def main(argv):
 
   # -- test data ------
   data_test = Data(
-      sys=sys,
+      system=system,
       ndata=FLAGS.ntest,
       input_type=FLAGS.input_type,
       output_type=FLAGS.output_type,

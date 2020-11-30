@@ -8,7 +8,7 @@ class Data(Dataset):
   """Object for generating and storing training/validation/test data."""
 
   def __init__(self,
-               sys,
+               system,
                ndata,
                input_type='potential',
                output_type='energy',
@@ -20,7 +20,7 @@ class Data(Dataset):
     """Initialises an object for storing data to learn from.
 
     Args:
-      sys: SpinlessHubbard object
+      system: SpinlessHubbard object
         The definition of the lattice model used.
       ndata: int
         The number of data points to be read or generated.
@@ -51,13 +51,13 @@ class Data(Dataset):
         Tensor holding the input data points in its rows.
       outputs: torch tensor of type torch.float and size (ndata, noutput)
         Tensor holding the predicted labels in its rows.
-      potentials: list of numpy ndarrays, each of size (sys.nsites)
+      potentials: list of numpy ndarrays, each of size (system.nsites)
         Holds the potentials applied to generate each data point.
       energies: list of floats
         Holds the ground-state energies for each potential applied
     """
 
-    self.sys = sys
+    self.system = system
     self.ndata = ndata
     self.input_type = input_type
     self.output_type = output_type
@@ -68,20 +68,20 @@ class Data(Dataset):
     self.energies = None
 
     if input_type == 'potential' or input_type == 'density':
-      self.ninput = sys.nsites
+      self.ninput = system.nsites
     elif input_type == '1-rdm':
-      self.ninput = sys.nsites**2
+      self.ninput = system.nsites**2
 
     if output_type == 'energy':
       self.noutput = 1
     elif output_type == 'wave_function':
-      self.noutput = sys.ndets
+      self.noutput = system.ndets
     elif output_type == 'potential' or output_type == 'density':
-      self.noutput = sys.nsites
+      self.noutput = system.nsites
     elif output_type == '1-rdm':
-      self.noutput = sys.nsites**2
+      self.noutput = system.nsites**2
     elif output_type == 'corr_fn':
-      self.noutput = sys.nsites**2
+      self.noutput = system.nsites**2
 
     if load:
       self.load_csv(path)
@@ -112,24 +112,24 @@ class Data(Dataset):
         If const_potential_sum is True, then this is the total summed
         value that is enforced.
     """
-    sys = self.sys
+    system = self.system
     self.inputs = torch.zeros(self.ndata, self.ninput, dtype=torch.float)
     self.labels = torch.zeros(self.ndata, self.noutput, dtype=torch.float)
     self.potentials = []
     self.energies = []
 
     for i in range(self.ndata):
-      V = sys.gen_rand_potential(
+      V = system.gen_rand_potential(
           const_potential_sum,
           potential_sum_val)
 
-      sys.add_potential_to_hamil(V)
+      system.add_potential_to_hamil(V)
       
       wf = WaveFunction(
-          nsites=sys.nsites,
-          dets=sys.dets)
+          nsites=system.nsites,
+          dets=system.dets)
 
-      wf.solve_eigenvalue(sys.hamil)
+      wf.solve_eigenvalue(system.hamil)
 
       self.potentials.append(V)
       self.energies.append(wf.energies[0])
