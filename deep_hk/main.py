@@ -60,7 +60,7 @@ flags.DEFINE_enum(
     'input_type', 'potential', ['potential', 'density', '1-rdm'], 'Specify '
     'which object we pass into the network input.')
 flags.DEFINE_enum('output_type', 'energy',
-    ['energy', 'wave_function', 'potential', 'density', '1-rdm'],
+    ['energy', 'wave_function', 'potential', 'density', '1-rdm', 'corr_fn'],
     'Specify which object should be output by the network.')
 flags.DEFINE_list('layer_widths', [100], 'The number of hidden units in '
     'each layer of the network, input as comma-separated values.')

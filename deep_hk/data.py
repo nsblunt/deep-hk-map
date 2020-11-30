@@ -80,6 +80,8 @@ class Data(Dataset):
       self.noutput = sys.nsites
     elif output_type == '1-rdm':
       self.noutput = sys.nsites**2
+    elif output_type == 'corr_fn':
+      self.noutput = sys.nsites**2
 
     if load:
       self.load_csv(path)
@@ -153,6 +155,9 @@ class Data(Dataset):
       elif self.output_type == '1-rdm':
         wf.calc_rdm1_gs()
         self.labels[i,:] = torch.from_numpy(wf.rdm1_gs.flatten())
+      elif self.output_type == 'corr_fn':
+        wf.calc_corr_fn_gs()
+        self.labels[i,:] = torch.from_numpy(wf.corr_fn_gs.flatten())
 
   def save_csv(self, filename):
     """Save the data to a CSV file.
