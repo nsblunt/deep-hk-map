@@ -64,6 +64,9 @@ flags.DEFINE_enum('output_type', 'energy',
     'Specify which object should be output by the network.')
 flags.DEFINE_list('layer_widths', [100], 'The number of hidden units in '
     'each layer of the network, input as comma-separated values.')
+flags.DEFINE_enum('activation_fn', 'relu',
+    ['relu', 'elu', 'sigmoid', 'tanh'],
+    'Define the activation function used.')
 
 # Parameters regarding saving/loading the trained network.
 flags.DEFINE_boolean('save_final_net', True, 'If True, then save the final '
@@ -155,7 +158,7 @@ def main(argv):
       layer_widths,
       noutput,
       wf_output = FLAGS.output_type == 'wave_function')
-  net = networks.LinearNet(layers_list)
+  net = networks.LinearNet(layers_list, FLAGS.activation_fn)
 
   if FLAGS.load_net:
     net.load(FLAGS.load_path)

@@ -94,17 +94,30 @@ def create_linear_layers(num_input,
 class LinearNet(nn.Module):
   """An neural network of linear (affine) layers."""
 
-  def __init__(self, layers_list):
+  def __init__(self, layers_list, activation_fn):
     """Initialises the network layers.
 
     Args:
       layers_list: list
-        A list of the layers to be applied between nonlinearities, including
-        the input and output layers. This can be created, for example, using
-        the create_linear_layers function.
+        A list of the layers to be applied between nonlinearities,
+        including the input and output layers. This can be created, for
+        example, using the create_linear_layers function.
+      activation_fn: string
+        String representing the activation function, which is used to
+        select a torch function below.
     """
     super(LinearNet, self).__init__()
     self.layers = nn.ModuleList(layers_list)
+    self.activation_fn = activation_fn
+
+    if activation_fn == 'relu':
+      self.activation_fn = nn.ReLU()
+    elif activation_fn == 'elu':
+      self.activation_fn = nn.ELU()
+    elif activation_fn == 'sigmoid':
+      self.activation_fn = nn.Sigmoid()
+    elif activation_fn == 'tanh':
+      self.activation_fn = nn.Tanh()
 
   def forward(self, x):
     """Pass the input through the network.
@@ -114,7 +127,7 @@ class LinearNet(nn.Module):
         The batch of input data to be passed through the network.
     """
     for layer in self.layers[:-1]:
-      x = F.relu(layer(x))
+      x = self.activation_fn(layer(x))
     # output layer
     x = self.layers[-1](x)
     return x
