@@ -153,12 +153,20 @@ def main(argv):
   ninput = data_train.ninput
   noutput = data_train.noutput
   layer_widths = [int(s) for s in FLAGS.layer_widths]
-  layers_list = networks.create_linear_layers(
+  #layers_list = networks.create_linear_layers(
+  #    ninput,
+  #    layer_widths,
+  #    noutput,
+  #    wf_output = FLAGS.output_type == 'wave_function')
+  #net = networks.LinearNet(layers_list, FLAGS.activation_fn)
+
+  layers_list = networks.create_conv1d_layers(
       ninput,
-      layer_widths,
       noutput,
-      wf_output = FLAGS.output_type == 'wave_function')
-  net = networks.LinearNet(layers_list, FLAGS.activation_fn)
+      num_in_channels=1,
+      num_out_channels=[12,12],
+      kernel_size=3)
+  net = networks.ConvNet(layers_list, ninput, FLAGS.activation_fn)
 
   if FLAGS.load_net:
     net.load(FLAGS.load_path)
