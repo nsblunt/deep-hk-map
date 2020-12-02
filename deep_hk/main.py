@@ -56,17 +56,25 @@ flags.DEFINE_integer('nepochs', 100, 'Number of training epochs to perform.')
 flags.DEFINE_float('lr', 0.001, 'The learning rate for the optimizer.')
 
 # Defining the network (including input/output objects).
+flags.DEFINE_enum('net_type', 'linear', ['linear', 'conv'], 'Specify which '
+    'network type to use.')
 flags.DEFINE_enum(
     'input_type', 'potential', ['potential', 'density', '1-rdm'], 'Specify '
     'which object we pass into the network input.')
 flags.DEFINE_enum('output_type', 'energy',
     ['energy', 'wave_function', 'potential', 'density', '1-rdm', 'corr_fn'],
     'Specify which object should be output by the network.')
-flags.DEFINE_list('layer_widths', [100], 'The number of hidden units in '
-    'each layer of the network, input as comma-separated values.')
 flags.DEFINE_enum('activation_fn', 'relu',
     ['relu', 'elu', 'sigmoid', 'tanh'],
     'Define the activation function used.')
+# Parameters to define linear networks.
+flags.DEFINE_list('layer_widths', [100], 'The number of hidden units in '
+    'each layer of the network, input as comma-separated values.')
+# Parameters to define convolutional networks.
+flags.DEFINE_integer('kernel_size', 3, 'The size of the kernel.')
+flags.DEFINE_list('output_channels', [5], 'A list specifying the number '
+    'of output channels in each convolutional layer. The length of this '
+    'list determines the number of such layers.')
 
 # Parameters regarding saving/loading the trained network.
 flags.DEFINE_boolean('save_final_net', True, 'If True, then save the final '
@@ -152,13 +160,31 @@ def main(argv):
 
   ninput = data_train.ninput
   noutput = data_train.noutput
-  layer_widths = [int(s) for s in FLAGS.layer_widths]
-  layers_list = networks.create_linear_layers(
-      ninput,
-      layer_widths,
-      noutput,
-      wf_output = FLAGS.output_type == 'wave_function')
-  net = networks.LinearNet(layers_list, FLAGS.activation_fn)
+
+  # Linear networks
+  if FLAGS.net_type == 'linear':
+    layer_widths = [int(s) for s in FLAGS.layer_widths]
+    layers_list = networks.create_linear_layers(
+        ninput,
+        layer_widths,
+        noutput,
+        wf_output = FLAGS.output_type == 'wave_function')
+    net = networks.LinearNet(
+        layers_list,
+        FLAGS.activation_fn)
+  # Convolutional networks
+  elif FLAGS.net_type == 'conv':
+    output_channels = [int(s) for s in FLAGS.output_channels]
+    layers_list = networks.create_conv1d_layers(
+        ninput,
+        noutput,
+        num_in_channels=1,
+        num_out_channels=output_channels,
+        kernel_size=FLAGS.kernel_size)
+    net = networks.ConvNet(
+        layers_list,
+        ninput,
+        FLAGS.activation_fn)
 
   if FLAGS.load_net:
     net.load(FLAGS.load_path)
