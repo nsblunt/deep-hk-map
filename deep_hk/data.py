@@ -3,6 +3,7 @@ from torch.utils.data import Dataset
 import torch
 import ast
 import csv
+import time
 
 class Data(Dataset):
   """Object for generating and storing training/validation/test data."""
@@ -118,6 +119,8 @@ class Data(Dataset):
     self.potentials = []
     self.energies = []
 
+    t1 = time.perf_counter()
+
     for i in range(self.ndata):
       V = system.gen_rand_potential(
           const_potential_sum,
@@ -158,6 +161,10 @@ class Data(Dataset):
       elif self.output_type == 'corr_fn':
         wf.calc_corr_fn_gs()
         self.labels[i,:] = torch.from_numpy(wf.corr_fn_gs.flatten())
+
+    t2 = time.perf_counter()
+
+    print('Time: ', t2-t1)
 
   def save_csv(self, filename):
     """Save the data to a CSV file.

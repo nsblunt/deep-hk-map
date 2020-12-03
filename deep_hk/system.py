@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.sparse import csr_matrix
 import itertools
 import random
 
@@ -41,13 +42,26 @@ class SpinlessHubbard:
     Other Attributes:
       dets: list of (tuple of int)
         List of determinants which span the space under consideration.
-        Each determinant is represented as a tuple holding the occupied sites.
+        Each determinant is represented as a tuple holding the occupied
+        sites.
       ndets: int
         The total number of determinants.
-      hamil: numpy ndarray of size (ndets, ndets)
-        Hamiltonian matrix for the spinless Hubbard model.
+      hamil: scipy csr_matrix
+        Hamiltonian for the spinless Hubbard model, stored in sparse
+        CSR form.
       hamil_diag: numpy ndarray of size (ndets)
         The diagonal elements of the Hamiltonian matrix.
+      hamil_data: list of float
+        List of non-zero Hamiltonian elements, in the order that they
+        are generated.
+      row_ind: list of int
+        Row indicies of the non-zero Hamiltonian elements, in the order
+        that they are generated.
+      col_ind: list of int
+        Column indicies of the non-zero Hamiltonian elements, in the
+        order that they are generated.
+      diag_pos: list of int
+        The positions of diagonal elements in the hamil_data list.
     """
     self.U = U
     self.t = t
@@ -60,8 +74,14 @@ class SpinlessHubbard:
 
     self.dets = None
     self.ndets = None
+
     self.hamil = None
     self.hamil_diag = None
+
+    self.hamil_data = []
+    self.row_ind = []
+    self.col_ind = []
+    self.diag_pos = []
 
     random.seed(self.seed)
 
@@ -92,7 +112,6 @@ class SpinlessHubbard:
 
     self.generate_dets()
 
-    self.hamil = np.zeros((self.ndets, self.ndets), dtype=float)
     self.hamil_diag = np.zeros(self.ndets, dtype=float)
 
     for i in range(self.ndets):
@@ -100,11 +119,16 @@ class SpinlessHubbard:
 
       for j in range(self.ndets):
         if i == j:
-          self.hamil[i,i] = self.diag_hamil_elem(self.dets[i])
-          self.hamil_diag[i] = self.hamil[i,i]
+          diag_elem = self.diag_hamil_elem(self.dets[i])
+          diag_counter = len(self.hamil_data)
+
+          self.hamil_data.append(diag_elem)
+          self.row_ind.append(i)
+          self.col_ind.append(i)
+          self.diag_pos.append(diag_counter)
+
+          self.hamil_diag[i] = diag_elem
         else:
-          if j < i:
-            continue
           # The number of occupied sites for each determinant.
           count_j = len(self.dets[j])
           # The Hamiltonian only connects determinants with equal
@@ -122,8 +146,15 @@ class SpinlessHubbard:
               # If connected then we have a non-zero Hamiltonian element.
               if self.connected(ind_ex):
                 par = self.parity_single(self.dets[i], self.dets[j], ind_ex)
-                self.hamil[i,j] = -self.t * par
-                self.hamil[j,i] = -self.t * par
+                hamil_elem = -self.t * par
+                self.hamil_data.append(hamil_elem)
+                self.row_ind.append(i)
+                self.col_ind.append(j)
+
+    # Make the Hamiltonian in CSR form.
+    self.hamil = csr_matrix(
+        (self.hamil_data, (self.row_ind, self.col_ind)),
+        shape=(self.ndets, self.ndets))
 
   def diag_hamil_elem(self, occ_list):
     """Generate and return the diagonal element of the Hamiltonian,
@@ -236,10 +267,11 @@ class SpinlessHubbard:
         An external potential.
     """
     for i in range(self.ndets):
-      self.hamil[i,i] = self.hamil_diag[i]
+      diag_pos = self.diag_pos[i]
+      self.hamil.data[diag_pos] = self.hamil_diag[i]
       # Loop over all occupied sites in determinant i.
       for site in self.dets[i]:
-        self.hamil[i,i] += V[site]
+        self.hamil.data[diag_pos] += V[site]
 
   def calc_energy(self, wf, V):
     """Calculate the expectation value of the Hamiltonian, with respect
@@ -252,5 +284,5 @@ class SpinlessHubbard:
         The external potential.
     """
     self.add_potential_to_hamil(V)
-    energy = np.dot(wf, np.matmul(self.hamil, wf))
+    energy = np.dot(wf, self.hamil.multiply(wf))
     return energy
