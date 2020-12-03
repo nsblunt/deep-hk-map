@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.sparse.linalg import eigsh
 from itertools import count
 
 class WaveFunction:
@@ -52,7 +53,7 @@ class WaveFunction:
       hamil: numpy ndarray of size (ndets, ndets)
         The Hamiltonian matrix.
     """
-    self.energies, self.coeffs = np.linalg.eigh(hamil)
+    self.energies, self.coeffs = eigsh(hamil, k=1)
 
   def calc_gs_density(self):
     """Calculate the local density from the ground-state wave function."""
