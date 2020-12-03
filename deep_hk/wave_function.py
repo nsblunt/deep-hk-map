@@ -53,7 +53,7 @@ class WaveFunction:
       hamil: numpy ndarray of size (ndets, ndets)
         The Hamiltonian matrix.
     """
-    self.energies, self.coeffs = eigsh(hamil, k=1)
+    self.energies, self.coeffs = eigsh(hamil, k=1, which='SA')
 
   def calc_gs_density(self):
     """Calculate the local density from the ground-state wave function."""
