@@ -42,13 +42,26 @@ class SpinlessHubbard:
     Other Attributes:
       dets: list of (tuple of int)
         List of determinants which span the space under consideration.
-        Each determinant is represented as a tuple holding the occupied sites.
+        Each determinant is represented as a tuple holding the occupied
+        sites.
       ndets: int
         The total number of determinants.
-      hamil: numpy ndarray of size (ndets, ndets)
-        Hamiltonian matrix for the spinless Hubbard model.
+      hamil: scipy csr_matrix
+        Hamiltonian for the spinless Hubbard model, stored in sparse
+        CSR form.
       hamil_diag: numpy ndarray of size (ndets)
         The diagonal elements of the Hamiltonian matrix.
+      hamil_data: list of float
+        List of non-zero Hamiltonian elements, in the order that they
+        are generated.
+      row_ind: list of int
+        Row indicies of the non-zero Hamiltonian elements, in the order
+        that they are generated.
+      col_ind: list of int
+        Column indicies of the non-zero Hamiltonian elements, in the
+        order that they are generated.
+      diag_pos: list of int
+        The positions of diagonal elements in the hamil_data list.
     """
     self.U = U
     self.t = t
@@ -64,9 +77,10 @@ class SpinlessHubbard:
 
     self.hamil = None
     self.hamil_diag = None
+
     self.hamil_data = []
-    self.hamil_i = []
-    self.hamil_j = []
+    self.row_ind = []
+    self.col_ind = []
     self.diag_pos = []
 
     random.seed(self.seed)
@@ -109,8 +123,8 @@ class SpinlessHubbard:
           diag_counter = len(self.hamil_data)
 
           self.hamil_data.append(diag_elem)
-          self.hamil_i.append(i)
-          self.hamil_j.append(i)
+          self.row_ind.append(i)
+          self.col_ind.append(i)
           self.diag_pos.append(diag_counter)
 
           self.hamil_diag[i] = diag_elem
@@ -134,12 +148,12 @@ class SpinlessHubbard:
                 par = self.parity_single(self.dets[i], self.dets[j], ind_ex)
                 hamil_elem = -self.t * par
                 self.hamil_data.append(hamil_elem)
-                self.hamil_i.append(i)
-                self.hamil_j.append(j)
+                self.row_ind.append(i)
+                self.col_ind.append(j)
 
     # Make the Hamiltonian in CSR form.
     self.hamil = csr_matrix(
-        (self.hamil_data, (self.hamil_i, self.hamil_j)),
+        (self.hamil_data, (self.row_ind, self.col_ind)),
         shape=(self.ndets, self.ndets))
 
   def diag_hamil_elem(self, occ_list):
