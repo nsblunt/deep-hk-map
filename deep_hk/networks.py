@@ -116,7 +116,6 @@ def create_conv1d_layers(ninput,
   layers_list = []
 
   padding = int((kernel_size-1)/2)
-  print(padding)
 
   # input layer:
   layers_list.append( nn.Conv1d(
