@@ -6,31 +6,35 @@ class WaveFunction:
   """Class to store wave functions and calculate properties."""
 
   def __init__(self, nsites, dets):
-    """Initialises an object for a wave function of a spinless lattice model.
+    """Initialises an object for a wave function of a spinless lattice
+       model.
 
-    Args:
-      nsites: int
-        The number of lattice sites.
-      dets: list of (tuple of int)
-        List of determinants which span the space under consideration.
-        Each determinant is represented as a tuple holding the occupied sites.
+    Args
+    ----
+    nsites : int
+      The number of lattice sites.
+    dets : list of (tuple of int)
+      List of determinants which span the space under consideration.
+      Each determinant is represented as a tuple holding the occupied
+      sites.
 
-    Other Attributes:
-      ndets: int
-        The total number of determinants.
-      coeffs: numpy ndarray of size (ndets, ndets)
-        Array holding the energy eigenfunctions themselves. The i'th energy
-        eigenstate has coefficients coeffs[:,i], with the same ordering as
-        the determinants held in dets.
-      energies: numpy ndarray of size (ndets)
-        The energy eigenvalues.
-      density_gs: numpy ndarray of size (nsites)
-        The local density of the ground-state wave function.
-      corr_fn_gs: numpy ndarray of size (nsites, nsites)
-        The two-point density correlation function of the ground-state
-        wave function.
-      rdm1_gs: numpy ndarray of size (nsites, nsites)
-        One-body reduced density matrix for the ground-state wave function.
+    Other Attributes
+    ----------------
+    ndets : int
+      The total number of determinants.
+    coeffs : numpy ndarray of size (ndets, ndets)
+      Array holding the energy eigenfunctions themselves. The i'th
+      energy eigenstate has coefficients coeffs[:,i], with the same
+      ordering as the determinants held in dets.
+    energies : numpy ndarray of size (ndets)
+      The energy eigenvalues.
+    density_gs : numpy ndarray of size (nsites)
+      The local density of the ground-state wave function.
+    corr_fn_gs : numpy ndarray of size (nsites, nsites)
+      The two-point density correlation function of the ground-state
+      wave function.
+    rdm1_gs : numpy ndarray of size (nsites, nsites)
+      One-body reduced density matrix for the ground-state wave function.
     """
     self.nsites = nsites
     self.dets = dets
@@ -49,9 +53,10 @@ class WaveFunction:
     """Solve the eigenvalue problem for the provided Hamiltonian. The
        results are stored internally in energies and coeffs.
 
-    Args:
-      hamil: numpy ndarray of size (ndets, ndets)
-        The Hamiltonian matrix.
+    Args
+    ----
+    hamil : numpy ndarray of size (ndets, ndets)
+      The Hamiltonian matrix.
     """
     self.energies, self.coeffs = eigsh(hamil, k=1, which='SA')
 

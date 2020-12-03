@@ -17,45 +17,49 @@ class Data(Dataset):
                save=True,
                path='data.csv',
                const_potential_sum=False,
-               potential_sum_val=0.0):
+               potential_sum_val=0.0,
+               print_timing=True):
     """Initialises an object for storing data to learn from.
 
-    Args:
-      system: SpinlessHubbard object
-        The definition of the lattice model used.
-      ndata: int
-        The number of data points to be read or generated.
-      input_type: string
-        String specifying what object is passed into the network.
-      output_type: string
-        String specifying what object is passed out of the network.
-      load: bool
-        If True, then the data is read from a file.
-      save: bool
-        If True, then the generated/loaded data is saved to a file.
-      path: string
-        Path specifying where data is loaded from or saved to.
-      const_potential_sum: bool
-        If True, then generated potentials will be shifted so that the
-        total summmed potential is a constant value (potential_sum_val).
-      potential_sum_val: float
-        If const_potential_sum is True, then this is the total summed
-        value that is enforced.
+    Args
+    ----
+    system : SpinlessHubbard object
+      The definition of the lattice model used.
+    ndata : int
+      The number of data points to be read or generated.
+    input_type : string
+      String specifying what object is passed into the network.
+    output_type : string
+      String specifying what object is passed out of the network.
+    load : bool
+      If True, then the data is read from a file.
+    save : bool
+      If True, then the generated/loaded data is saved to a file.
+    path : string
+      Path specifying where data is loaded from or saved to.
+    const_potential_sum : bool
+      If True, then generated potentials will be shifted so that the
+      total summmed potential is a constant value (potential_sum_val).
+    potential_sum_val : float
+      If const_potential_sum is True, then this is the total summed
+      value that is enforced.
+    print_timing : bool
+      If true, print timing information.
 
-    Other attributes:
-      ninput: int
-        the number of values passed into the network (for each data
-        point).
-      noutput: int
-        the number of values passed out of the network.
-      inputs: torch tensor of type torch.float and size (ndata, ninput)
-        Tensor holding the input data points in its rows.
-      outputs: torch tensor of type torch.float and size (ndata, noutput)
-        Tensor holding the predicted labels in its rows.
-      potentials: list of numpy ndarrays, each of size (system.nsites)
-        Holds the potentials applied to generate each data point.
-      energies: list of floats
-        Holds the ground-state energies for each potential applied
+    Other attributes
+    ----------------
+    ninput : int
+      The number of values passed into the network (for each data point).
+    noutput : int
+      The number of values passed out of the network.
+    inputs : torch tensor of type torch.float and size (ndata, ninput)
+      Tensor holding the input data points in its rows.
+    outputs : torch tensor of type torch.float and size (ndata, noutput)
+      Tensor holding the predicted labels in its rows.
+    potentials : list of numpy ndarrays, each of size (system.nsites)
+      Holds the potentials applied to generate each data point.
+    energies : list of floats
+      Holds the ground-state energies for each potential applied
     """
 
     self.system = system
@@ -67,6 +71,8 @@ class Data(Dataset):
     self.labels = None
     self.potentials = None
     self.energies = None
+
+    self.print_timing = print_timing
 
     if input_type == 'potential' or input_type == 'density':
       self.ninput = system.nsites
@@ -105,13 +111,14 @@ class Data(Dataset):
   def generate(self, const_potential_sum=False, potential_sum_val=0.0):
     """Generate all data.
 
-    Args:
-      const_potential_sum: bool
-        If True, then generated potentials will be shifted so that the
-        total summed potential is a constant value (potential_sum_val).
-      potential_sum_val: float
-        If const_potential_sum is True, then this is the total summed
-        value that is enforced.
+    Args
+    ----
+    const_potential_sum : bool
+      If True, then generated potentials will be shifted so that the
+      total summed potential is a constant value (potential_sum_val).
+    potential_sum_val : float
+      If const_potential_sum is True, then this is the total summed
+      value that is enforced.
     """
     system = self.system
     self.inputs = torch.zeros(self.ndata, self.ninput, dtype=torch.float)
@@ -164,14 +171,16 @@ class Data(Dataset):
 
     t2 = time.perf_counter()
 
-    print('Time: ', t2-t1)
+    if self.print_timing:
+      print('Time to generate data: {:.6f}\n'.format(t2-t1))
 
   def save_csv(self, filename):
     """Save the data to a CSV file.
 
-    Args:
-      filename: string
-        The name of the file where data will be saved.
+    Args
+    ----
+    filename : string
+      The name of the file where data will be saved.
     """
     with open(filename, 'w', newline='') as csv_file:
       writer = csv.writer(csv_file)
@@ -182,9 +191,10 @@ class Data(Dataset):
   def load_csv(self, filename):
     """Load the data from a CSV file.
 
-    Args:
-      filename: string
-        The name of the file where data will be loaded from.
+    Args
+    ----
+    filename : string
+      The name of the file where data will be loaded from.
     """
     self.inputs = torch.zeros(self.ndata, self.ninput, dtype=torch.float)
     self.labels = torch.zeros(self.ndata, self.noutput, dtype=torch.float)

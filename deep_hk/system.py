@@ -17,51 +17,53 @@ class SpinlessHubbard:
                seed):
     """Initialises an object for the Hamiltonian of a spinless Hubbard model.
 
-    Args:
-      U: float
-        The density-density interaction parameter.
-      t: float
-        The hopping amplitude parameter.
-      mu: float
-        The chemical potential.
-      max_V: float
-        The maximum absolute value of the potential applied to each
-        site (when generating randon potentials).
-      nsites: int
-        The number of lattice sites.
-      fixed_nparticles: bool
-        True if considering a fixed number of particles. False if
-        considering all particle number sectors simultaneously.
-      nparticles: int
-        The number of particles. This is only used if fixed_nparticles
-        is True.
-      seed: int
-        Seed for the random number generator, used to generate random
-        potentials.
+    Args
+    ----
+    U : float
+      The density-density interaction parameter.
+    t : float
+      The hopping amplitude parameter.
+    mu : float
+      The chemical potential.
+    max_V : float
+      The maximum absolute value of the potential applied to each site
+      (when generating randon potentials).
+    nsites : int
+      The number of lattice sites.
+    fixed_nparticles : bool
+      True if considering a fixed number of particles. False if
+      considering all particle number sectors simultaneously.
+    nparticles : int
+      The number of particles. This is only used if fixed_nparticles
+      is True.
+    seed : int
+      Seed for the random number generator, used to generate random
+      potentials.
 
-    Other Attributes:
-      dets: list of (tuple of int)
-        List of determinants which span the space under consideration.
-        Each determinant is represented as a tuple holding the occupied
-        sites.
-      ndets: int
-        The total number of determinants.
-      hamil: scipy csr_matrix
-        Hamiltonian for the spinless Hubbard model, stored in sparse
-        CSR form.
-      hamil_diag: numpy ndarray of size (ndets)
-        The diagonal elements of the Hamiltonian matrix.
-      hamil_data: list of float
-        List of non-zero Hamiltonian elements, in the order that they
-        are generated.
-      row_ind: list of int
-        Row indicies of the non-zero Hamiltonian elements, in the order
-        that they are generated.
-      col_ind: list of int
-        Column indicies of the non-zero Hamiltonian elements, in the
-        order that they are generated.
-      diag_pos: list of int
-        The positions of diagonal elements in the hamil_data list.
+    Other Attributes
+    ----------------
+    dets : list of (tuple of int)
+      List of determinants which span the space under consideration.
+      Each determinant is represented as a tuple holding the occupied
+      sites.
+    ndets : int
+      The total number of determinants.
+    hamil : scipy csr_matrix
+      Hamiltonian for the spinless Hubbard model, stored in sparse
+      CSR form.
+    hamil_diag : numpy ndarray of size (ndets)
+      The diagonal elements of the Hamiltonian matrix.
+    hamil_data : list of float
+      List of non-zero Hamiltonian elements, in the order that they are
+      generated.
+    row_ind : list of int
+      Row indicies of the non-zero Hamiltonian elements, in the order
+      that they are generated.
+    col_ind : list of int
+      Column indicies of the non-zero Hamiltonian elements, in the order
+      that they are generated.
+    diag_pos : list of int
+      The positions of diagonal elements in the hamil_data list.
     """
     self.U = U
     self.t = t
@@ -160,9 +162,10 @@ class SpinlessHubbard:
     """Generate and return the diagonal element of the Hamiltonian,
        corresponding to determinant represented by i_bin.
   
-    Args:
-      occ_list: tuple of int
-        tuple holding all occupied sites in the determinant.
+    Args
+    ----
+    occ_list : tuple of int
+      Tuple holding all occupied sites in the determinant.
     """
     nparticles = len(occ_list)
   
@@ -185,9 +188,10 @@ class SpinlessHubbard:
   def connected(self, ind_ex):
     """Return true if two sites are connected on the lattice.
   
-    Args:
-      ind_ex: tuple of int
-        the two sites who occupation changes in the excitation.
+    Args
+    ----
+    ind_ex : tuple of int
+      The two sites who occupation changes in the excitation.
     """
     # Sites are connected if nearest neighbours.
     if ind_ex[1] == ind_ex[0]+1:
@@ -198,17 +202,18 @@ class SpinlessHubbard:
       return False
 
   def parity_single(self, occ_i, occ_j, ind_ex):
-    """Calculate the parity (+1 or -1) for the Hamiltonian element between
-       the two determinants represented by bit strings i and j, which are a
-       single excitation apart from each other.
+    """Calculate the parity (+1 or -1) for the Hamiltonian element
+       between the two determinants represented by bit strings i and j,
+       which are a single excitation apart from each other.
   
-    Args:
-      occ_i: tuple of int
-        tuple holding all occupied sites in determinant i.
-      occ_j: tuple of int
-        tuple holding all occupied sites in determinant j.
-      ind_ex: tuple of int
-        the two sites whose occupation changes in the excitation.
+    Args
+    ----
+    occ_i: tuple of int
+      Tuple holding all occupied sites in determinant i.
+    occ_j: tuple of int
+      Tuple holding all occupied sites in determinant j.
+    ind_ex: tuple of int
+      The two sites whose occupation changes in the excitation.
     """
     if ind_ex[0] in occ_i:
       ind_i = ind_ex[0]
@@ -237,16 +242,18 @@ class SpinlessHubbard:
        shifted uniformly so that the total summed potential is equal to
        potential_sum_val.
 
-    Args:
-      const_potential_sum: bool
-        If true, then uniformly shift the final potential so that the
-        summed value (over all sites) is constant.
-      potential_sum_val: float
-        The value of the summed potential, if const_potential_sum is true.
+    Args
+    ----
+    const_potential_sum : bool
+      If true, then uniformly shift the final potential so that the
+      summed value (over all sites) is constant.
+    potential_sum_val : float
+      The value of the summed potential, if const_potential_sum is true.
 
-    Returns:
-      V: numpy ndarray of size (nsites)
-        A random external potential.
+    Returns
+    -------
+    V : numpy ndarray of size (nsites)
+      A random external potential.
     """
     V = np.zeros( self.nsites )
     for i in range(self.nsites):
@@ -262,9 +269,10 @@ class SpinlessHubbard:
   def add_potential_to_hamil(self, V):
     """Add the potential V into the Hamiltonian object, hamil.
 
-    Args:
-      V: numpy ndarray of size (nsites)
-        An external potential.
+    Args
+    ----
+    V : numpy ndarray of size (nsites)
+      An external potential.
     """
     for i in range(self.ndets):
       diag_pos = self.diag_pos[i]
@@ -277,11 +285,12 @@ class SpinlessHubbard:
     """Calculate the expectation value of the Hamiltonian, with respect
        to the provided wave function.
 
-    Args:
-      wf: numpy ndarray of size (ndets)
-        The wave function to be used in the expectation value.
-      V: numpy ndarray of size (nsites)
-        The external potential.
+    Args
+    ----
+    wf : numpy ndarray of size (ndets)
+      The wave function to be used in the expectation value.
+    V : numpy ndarray of size (nsites)
+      The external potential.
     """
     self.add_potential_to_hamil(V)
     energy = np.dot(wf, self.hamil.multiply(wf))

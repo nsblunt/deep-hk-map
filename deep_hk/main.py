@@ -37,21 +37,22 @@ flags.DEFINE_integer('ntrain', 12800, 'Number of training samples to '
 flags.DEFINE_integer('nvalidation', 0, 'Number of validation samples to '
     'generate.')
 flags.DEFINE_integer('ntest', 100, 'Number of test samples to generate.')
-flags.DEFINE_boolean('load_train_data_csv', False, 'If true, read the training '
-    'data from a CSV file, instead of generating it.')
-flags.DEFINE_boolean('load_valid_data_csv', False, 'If true, read the validation '
-    'data from a CSV file, instead of generating it.')
+flags.DEFINE_boolean('load_train_data_csv', False, 'If true, read the '
+    'training data from a CSV file, instead of generating it.')
+flags.DEFINE_boolean('load_valid_data_csv', False, 'If true, read the '
+    'validation data from a CSV file, instead of generating it.')
 flags.DEFINE_boolean('load_test_data_csv', False, 'If true, read the test '
     'data from a CSV file, instead of generating it.')
-flags.DEFINE_boolean('save_train_data_csv', True, 'If true, save the generated '
-    'training data to a CSV file.')
-flags.DEFINE_boolean('save_valid_data_csv', True, 'If true, save the generated '
-    'validation data to a CSV file.')
-flags.DEFINE_boolean('save_test_data_csv', True, 'If true, save the generated '
-    'test data to a CSV file.')
+flags.DEFINE_boolean('save_train_data_csv', True, 'If true, save the '
+    'generated training data to a CSV file.')
+flags.DEFINE_boolean('save_valid_data_csv', True, 'If true, save the '
+    'generated validation data to a CSV file.')
+flags.DEFINE_boolean('save_test_data_csv', True, 'If true, save the '
+    'generated test data to a CSV file.')
 
 # Training parameters.
-flags.DEFINE_integer('batch_size', 128, 'Number of samples per training batch.')
+flags.DEFINE_integer('batch_size', 128, 'Number of samples per training '
+    'batch.')
 flags.DEFINE_integer('nepochs', 100, 'Number of training epochs to perform.')
 flags.DEFINE_float('lr', 0.001, 'The learning rate for the optimizer.')
 

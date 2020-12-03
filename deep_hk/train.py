@@ -5,12 +5,13 @@ from itertools import count
 
 
 class Infidelity(nn.Module):
-  """A loss function that uses the infidelity of a wave function, defined as:
+  r"""A loss function that uses the infidelity of a wave function,
+    defined as:
 
     I(\psi_p, psi_e) = 1 - |\langle \psi_p | \psi_e \rangle|.
 
-    In other words, unity minus the overlap of the predicted and exact wave
-    functions.
+    In other words, unity minus the overlap of the predicted and exact
+    wave functions.
   """
 
   def __init__(self):
@@ -20,11 +21,12 @@ class Infidelity(nn.Module):
   def forward(self, outputs, labels):
     """Calculate the infidelity using the provided outputs and labels.
 
-    Args:
-      outputs: torch tensor
-        the batch of output data.
-      labels: torch tensor
-        the batch of labels being targeted.
+    Args
+    ----
+    outputs : torch tensor
+      The batch of output data.
+    labels : torch tensor
+      The batch of labels being targeted.
     """
     dot_products = torch.sum(outputs * labels, dim=1)
     loss = 1 - torch.mean(torch.abs(dot_products))
@@ -43,31 +45,33 @@ def train(net,
           save_net_every=100):
   """Train the network.
 
-  Args:
-    net: network object
-      The neural network to be trained.
-    data_train: Data object
-      The training data.
-    data_validation: Data object
-      The validation data.
-    data_test: Data object
-      The test data.
-    criterion: torch criterion object
-      Used to measure the loss function between predicted and targeted data.
-    optimizer: torch optimizer object
-      Implements the optimization algorithm, such as Adam.
-    nepochs: int
-      The number of epochs to perform.
-    batch_size: int
-      The number of data points passed in each batch.
-    save_net: bool
-      If True, save the network state to a file at regular intervals.
-    save_root: string
-      The path and root of the filenames where networks will be saved, if
-      save_net is True.
-    save_net_every: int
-      The frequency (in epochs) at which the network will be saved to a file,
-      if save_net is True.
+  Args
+  ----
+  net : network object
+    The neural network to be trained.
+  data_train : Data object
+    The training data.
+  data_validation : Data object
+    The validation data.
+  data_test : Data object
+    The test data.
+  criterion : torch criterion object
+    Used to measure the loss function between predicted and targeted
+    data.
+  optimizer : torch optimizer object
+    Implements the optimization algorithm, such as Adam.
+  nepochs : int
+    The number of epochs to perform.
+  batch_size : int
+    The number of data points passed in each batch.
+  save_net : bool
+    If True, save the network state to a file at regular intervals.
+  save_root : string
+    The path and root of the filenames where networks will be saved, if
+    save_net is True.
+  save_net_every : int
+    The frequency (in epochs) at which the network will be saved to a
+    file, if save_net is True.
   """
   # Print the header.
   if data_validation is None:
@@ -122,16 +126,17 @@ def print_net_accuracy(net, data_train, data_test, criterion):
      Also, calculate the norms and print these together with the
      training and test data values for comparison.
 
-  Args:
-    net: network object
-      The neural network to be used in the comparison.
-    data_train: Data object
-      The training data.
-    data_test: Data object
-      The test data.
-    criterion: torch criterion object
-      Used to measure the loss function between the predicted and
-      targeted data.
+  Args
+  ----
+  net : network object
+    The neural network to be used in the comparison.
+  data_train : Data object
+    The training data.
+  data_test : Data object
+    The test data.
+  criterion : Torch criterion object
+    Used to measure the loss function between the predicted and
+    targeted data.
   """
   # Apply the network to the training data.
   outputs_train = net(data_train.inputs)
@@ -165,13 +170,14 @@ def print_data_comparison(net, data, data_label):
   """For the requested data point, print the predicted and target values
      for each output unit. Also, print the potential of this data point.
 
-  Args:
-    net: network object
-      The neural network to be used in the comparison.
-    data: Data object
-      Object holding a set of data points.
-    data_label:
-      The index of the data point to be considered, in the data arrays.
+  Args
+  ----
+  net : network object
+    The neural network to be used in the comparison.
+  data : Data object
+    Object holding a set of data points.
+  data_label :
+    The index of the data point to be considered, in the data arrays.
   """
   print('\nComparing the exact output to the predicted output for a '
         'single test example...')
@@ -204,14 +210,14 @@ def assess_predicted_energies(net, data, criterion):
      function uses this output to calculate the variational energy
      estimator, and compares these predicted energies to exact values.
 
-  Args:
-    net: network object
-      A network which outputs wave function coefficients.
-    data: Data object
-      The data that will be used in the comparison.
-    criterion: torch criterion object
-      A loss function object, to compare the predicted and exact
-      energies.
+  Args
+  ----
+  net : network object
+    A network which outputs wave function coefficients.
+  data : Data object
+    The data that will be used in the comparison.
+  criterion : torch criterion object
+    A loss function object, to compare the predicted and exact energies.
   """
   wf_predicted = net(data.inputs)
   e_predicted = torch.zeros(data.ndata)
