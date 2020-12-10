@@ -110,7 +110,7 @@ class SpinlessHubbard:
     self.ndets = len(self.dets)
 
   def construct(self):
-    """Construct the Hamiltonian, which is a numpy ndarray."""
+    """Construct the Hamiltonian, which is a sparse scipy CSR matrix."""
 
     self.generate_dets()
 
@@ -208,11 +208,11 @@ class SpinlessHubbard:
   
     Args
     ----
-    occ_i: tuple of int
+    occ_i : tuple of int
       Tuple holding all occupied sites in determinant i.
-    occ_j: tuple of int
+    occ_j : tuple of int
       Tuple holding all occupied sites in determinant j.
-    ind_ex: tuple of int
+    ind_ex : tuple of int
       The two sites whose occupation changes in the excitation.
     """
     if ind_ex[0] in occ_i:

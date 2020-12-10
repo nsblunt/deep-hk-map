@@ -18,7 +18,7 @@ class Data(Dataset):
                path='data.csv',
                const_potential_sum=False,
                potential_sum_val=0.0,
-               print_timing=True):
+               print_timing=False):
     """Initialises an object for storing data to learn from.
 
     Args

@@ -195,7 +195,10 @@ def main(argv):
   else:
     criterion = nn.L1Loss()
 
-  optimizer = optim.Adam(net.parameters(), lr=FLAGS.lr, amsgrad=False)
+  optimizer = optim.Adam(
+    net.parameters(),
+    lr=FLAGS.lr,
+    amsgrad=False)
 
   train.train(
       net=net,
