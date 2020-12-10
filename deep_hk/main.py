@@ -1,7 +1,8 @@
 from absl import app
 from absl import flags
 from data import Data
-from system import SpinlessHubbard
+from hubbard import Hubbard
+from spinless_hubbard import SpinlessHubbard
 from wave_function import WaveFunction
 import networks
 import train
@@ -17,6 +18,10 @@ flag_dict_init = FLAGS.flag_values_dict()
 # Define the system.
 flags.DEFINE_integer('nsites', 4, 'Number of lattice sites.')
 flags.DEFINE_integer('nparticles', 2, 'Number of particles.')
+flags.DEFINE_boolean('fixed_Ms' True, 'If true then use a fixed-Ms '
+    'sector. This is not used in the case of spinless systems.')
+flags.DEFINE_integer('Ms', 0, 'Total spin of the system (in units of '
+    'electron spin). This is not used in the case of spinless systems.')
 flags.DEFINE_float('U', 1.0, 'Parameter U in the spinless Hubbard model.')
 flags.DEFINE_float('t', 1.0, 'Parameter t in the spinless Hubbard model.')
 flags.DEFINE_float('mu', 0.0, 'Chemical potential parameter.')
@@ -109,7 +114,16 @@ def main(argv):
 
   torch.manual_seed(FLAGS.seed)
 
-  system = SpinlessHubbard(
+  #system = SpinlessHubbard(
+  #    U=FLAGS.U,
+  #    t=FLAGS.t,
+  #    mu=FLAGS.mu,
+  #    max_V=FLAGS.max_potential,
+  #    nsites=FLAGS.nsites,
+  #    fixed_nparticles=FLAGS.fixed_nparticles,
+  #    nparticles=FLAGS.nparticles,
+  #    seed=FLAGS.seed)
+  system = Hubbard(
       U=FLAGS.U,
       t=FLAGS.t,
       mu=FLAGS.mu,
@@ -117,6 +131,8 @@ def main(argv):
       nsites=FLAGS.nsites,
       fixed_nparticles=FLAGS.fixed_nparticles,
       nparticles=FLAGS.nparticles,
+      fixed_Ms=FLAGS.fixed_Ms,
+      Ms=FLAGS.Ms,
       seed=FLAGS.seed)
   system.construct()
 

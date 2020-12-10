@@ -14,7 +14,7 @@ class SpinlessHubbard:
                nsites,
                fixed_nparticles,
                nparticles,
-               seed):
+               seed=7):
     """Initialises an object for the Hamiltonian of a spinless Hubbard model.
 
     Args
@@ -140,8 +140,8 @@ class SpinlessHubbard:
           # The Hamiltonian only connects determinants with equal
           # numbers of orbitals occupied.
           if count_i == count_j:
-            # Find which orbitals have had their occupation changed, which
-            # are the excitations.
+            # Find which orbitals have had their occupation changed.
+            # These define the excitation.
             ind_ex_set = set(self.dets[i]).symmetric_difference(set(self.dets[j]))
             ind_ex = tuple(ind_ex_set)
             count_ex = len(ind_ex)
@@ -164,7 +164,7 @@ class SpinlessHubbard:
 
   def diag_hamil_elem(self, occ_list):
     """Generate and return the diagonal element of the Hamiltonian,
-       corresponding to determinant represented by i_bin.
+       corresponding to determinant represented by occ_list.
   
     Args
     ----
@@ -240,7 +240,7 @@ class SpinlessHubbard:
                          const_potential_sum=False,
                          potential_sum_val=0.0):
     """Generate a random potential, where the potential on each site is
-       a random number between -0.5 and 0.5.
+       a random number between -self.max_V and +self.max_V.
 
        If const_potential_sum is true, then the generated potential is
        shifted uniformly so that the total summed potential is equal to
