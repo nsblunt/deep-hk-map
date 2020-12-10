@@ -137,6 +137,7 @@ class Data(Dataset):
       
       wf = WaveFunction(
           nsites=system.nsites,
+          nspin=system.nspin,
           dets=system.dets)
 
       wf.solve_eigenvalue(system.hamil)

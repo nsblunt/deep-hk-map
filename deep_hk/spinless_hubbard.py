@@ -45,6 +45,9 @@ class SpinlessHubbard:
     norbs : int
       The number of spin orbitals. In this model there is no spin
       degree of freedom, so norbs = nsites.
+    nspin : int
+      The number of spin states per site. For the spinless Hubbard
+      model, this is equal to 1.
     dets : list of (tuple of int)
       List of determinants which span the space under consideration.
       Each determinant is represented as a tuple holding the occupied
@@ -74,6 +77,7 @@ class SpinlessHubbard:
     self.max_V = max_V
     self.nsites = nsites
     self.norbs = nsites
+    self.nspin = 1
     self.fixed_nparticles = fixed_nparticles
     self.nparticles = nparticles
     self.seed = seed

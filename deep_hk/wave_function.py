@@ -5,7 +5,7 @@ from itertools import count
 class WaveFunction:
   """Class to store wave functions and calculate properties."""
 
-  def __init__(self, nsites, dets):
+  def __init__(self, nsites, nspin, dets):
     """Initialises an object for a wave function of a spinless lattice
        model.
 
@@ -13,6 +13,8 @@ class WaveFunction:
     ----
     nsites : int
       The number of lattice sites.
+    nspin : int
+      The number of spin states per site (1 or 2).
     dets : list of (tuple of int)
       List of determinants which span the space under consideration.
       Each determinant is represented as a tuple holding the occupied
@@ -37,6 +39,7 @@ class WaveFunction:
       One-body reduced density matrix for the ground-state wave function.
     """
     self.nsites = nsites
+    self.nspin = nspin
     self.dets = dets
     self.ndets = len(dets)
 
@@ -55,7 +58,7 @@ class WaveFunction:
 
     Args
     ----
-    hamil : numpy ndarray of size (ndets, ndets)
+    hamil : scipy sparse CSR matrix
       The Hamiltonian matrix.
     """
     self.energies, self.coeffs = eigsh(hamil, k=1, which='SA')
@@ -64,7 +67,8 @@ class WaveFunction:
     """Calculate the local density from the ground-state wave function."""
     self.density_gs = np.zeros( self.nsites )
     for det, coeff in zip(self.dets, self.coeffs[:,0]):
-      for site in det:
+      for orb in det:
+        site = orb//self.nspin
         self.density_gs[site] += coeff**2
 
   def calc_corr_fn_gs(self):
@@ -73,9 +77,11 @@ class WaveFunction:
     """
     self.corr_fn_gs = np.zeros( (self.nsites, self.nsites) )
     for det, coeff in zip(self.dets, self.coeffs[:,0]):
-      for site1 in det:
-        for site2 in det:
-          self.corr_fn_gs[site1,site2] += coeff**2
+      for orb_1 in det:
+        site_1 = orb_1//self.nspin
+        for orb_2 in det:
+          site_2 = orb_2//self.nspin
+          self.corr_fn_gs[site_1,site_2] += coeff**2
 
   def calc_rdm1_gs(self):
     """Calculate the one-body reduced density matrix for the ground-state
@@ -88,8 +94,9 @@ class WaveFunction:
 
       # Contributions for the diagonal of the density matrix:
       coeff_sq = coeff_1**2
-      for p in det_1:
-        self.rdm1_gs[p,p] += coeff_sq
+      for orb_p in det_1:
+        site_p = orb_p//self.nspin
+        self.rdm1_gs[site_p,site_p] += coeff_sq
 
       # Contributions for the off-diagonal of the density matrix:
       for det_2, coeff_2 in zip(self.dets, self.coeffs[:,0]):
@@ -103,11 +110,13 @@ class WaveFunction:
         ind_ex = tuple(ind_ex_set)
         count_ex = len(ind_ex)
         if count_ex == 2 and nel_1 == nel_2:
-          p = ind_ex[0]
-          q = ind_ex[1]
+          orb_p = ind_ex[0]
+          orb_q = ind_ex[1]
+          site_p = orb_p//self.nspin
+          site_q = orb_q//self.nspin
           contrib = coeff_1*coeff_2
-          self.rdm1_gs[p,q] += contrib
-          self.rdm1_gs[q,p] += contrib
+          self.rdm1_gs[site_p,site_q] += contrib
+          self.rdm1_gs[site_q,site_p] += contrib
 
   def print_energies(self):
     """Print the list of energies to screen."""

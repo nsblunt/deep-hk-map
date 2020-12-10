@@ -52,6 +52,9 @@ class Hubbard:
     ----------------
     norbs : int
       The number of spin orbitals.
+    nspin : int
+      The number of spin states per site. Equal to 2 for the spinned
+      Hubbard model.
     dets : list of (tuple of int)
       List of determinants which span the space under consideration.
       Each determinant is represented as a tuple holding the occupied
@@ -81,6 +84,7 @@ class Hubbard:
     self.max_V = max_V
     self.nsites = nsites
     self.norbs = 2*nsites
+    self.nspin = 2
     self.fixed_nparticles = fixed_nparticles
     self.nparticles = nparticles
     self.fixed_Ms = fixed_Ms

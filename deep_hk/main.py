@@ -3,7 +3,6 @@ from absl import flags
 from data import Data
 from hubbard import Hubbard
 from spinless_hubbard import SpinlessHubbard
-from wave_function import WaveFunction
 import networks
 import train
 import json
@@ -18,7 +17,7 @@ flag_dict_init = FLAGS.flag_values_dict()
 # Define the system.
 flags.DEFINE_integer('nsites', 4, 'Number of lattice sites.')
 flags.DEFINE_integer('nparticles', 2, 'Number of particles.')
-flags.DEFINE_boolean('fixed_Ms' True, 'If true then use a fixed-Ms '
+flags.DEFINE_boolean('fixed_Ms', True, 'If true then use a fixed-Ms '
     'sector. This is not used in the case of spinless systems.')
 flags.DEFINE_integer('Ms', 0, 'Total spin of the system (in units of '
     'electron spin). This is not used in the case of spinless systems.')
