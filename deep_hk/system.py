@@ -42,6 +42,9 @@ class SpinlessHubbard:
 
     Other Attributes
     ----------------
+    norbs : int
+      The number of spin orbitals. In this model there is no spin
+      degree of freedom, so norbs = nsites.
     dets : list of (tuple of int)
       List of determinants which span the space under consideration.
       Each determinant is represented as a tuple holding the occupied
@@ -70,6 +73,7 @@ class SpinlessHubbard:
     self.mu = mu
     self.max_V = max_V
     self.nsites = nsites
+    self.norbs = nsites
     self.fixed_nparticles = fixed_nparticles
     self.nparticles = nparticles
     self.seed = seed
@@ -92,17 +96,17 @@ class SpinlessHubbard:
     self.dets = []
 
     if self.fixed_nparticles:
-      # Generate all determinants with nparticles fermions in nsites
+      # Generate all determinants with nparticles fermions in norb
       # orbitals.
-      r = itertools.combinations(range(self.nsites), self.nparticles)
+      r = itertools.combinations(range(self.norbs), self.nparticles)
       for item in r:
         self.dets.append(item)
     else:
       # Generate all determinants of all occupations numbers, from 0 to
-      # nsites.
-      for i in range(2**self.nsites):
+      # norbs.
+      for i in range(2**self.norbs):
         # Binary string representation of determinant i.
-        i_bin = bin(i)[2:].zfill(self.nsites)
+        i_bin = bin(i)[2:].zfill(self.norbs)
         occ_list = [ind for ind,a in enumerate(i_bin) if a == '1']
         occ_tuple = tuple(occ_list)
         self.dets.append(occ_tuple)
@@ -131,12 +135,12 @@ class SpinlessHubbard:
 
           self.hamil_diag[i] = diag_elem
         else:
-          # The number of occupied sites for each determinant.
+          # The number of occupied orbitals for each determinant.
           count_j = len(self.dets[j])
           # The Hamiltonian only connects determinants with equal
           # numbers of orbitals occupied.
           if count_i == count_j:
-            # Find which sites have had their occupation changed, which
+            # Find which orbitals have had their occupation changed, which
             # are the excitations.
             ind_ex_set = set(self.dets[i]).symmetric_difference(set(self.dets[j]))
             ind_ex = tuple(ind_ex_set)
@@ -165,38 +169,38 @@ class SpinlessHubbard:
     Args
     ----
     occ_list : tuple of int
-      Tuple holding all occupied sites in the determinant.
+      Tuple holding all occupied orbitals in the determinant.
     """
     nparticles = len(occ_list)
   
     if nparticles == 0:
       return 0.0
   
-    # count the number of 1-1 bonds
+    # Count the number of 1-1 bonds.
     nbonds = 0
     if nparticles > 1:
       for ind in range(nparticles-1):
         if occ_list[ind]+1 == occ_list[ind+1]:
           nbonds += 1
-      # account for periodicity
-      if occ_list[0] == 0 and occ_list[nparticles-1] == self.nsites-1:
+      # Account for periodicity.
+      if occ_list[0] == 0 and occ_list[nparticles-1] == self.norbs-1:
         nbonds += 1
   
     diag_elem = (self.U * nbonds) - (self.mu * nparticles)
     return diag_elem
 
   def connected(self, ind_ex):
-    """Return true if two sites are connected on the lattice.
+    """Return true if two orbitals are connected on the lattice.
   
     Args
     ----
     ind_ex : tuple of int
-      The two sites who occupation changes in the excitation.
+      The two orbitals whose occupation changes in the excitation.
     """
-    # Sites are connected if nearest neighbours.
+    # Sites/orbitals are connected if nearest neighbours.
     if ind_ex[1] == ind_ex[0]+1:
       return True
-    elif ind_ex[0] == 0 and ind_ex[1] == self.nsites-1: # (periodicity)
+    elif ind_ex[0] == 0 and ind_ex[1] == self.norbs-1: # (periodicity)
       return True
     else:
       return False
@@ -209,11 +213,11 @@ class SpinlessHubbard:
     Args
     ----
     occ_i : tuple of int
-      Tuple holding all occupied sites in determinant i.
+      Tuple holding all occupied orbitals in determinant i.
     occ_j : tuple of int
-      Tuple holding all occupied sites in determinant j.
+      Tuple holding all occupied orbitals in determinant j.
     ind_ex : tuple of int
-      The two sites whose occupation changes in the excitation.
+      The two orbitals whose occupation changes in the excitation.
     """
     if ind_ex[0] in occ_i:
       ind_i = ind_ex[0]
@@ -223,7 +227,7 @@ class SpinlessHubbard:
       ind_j = ind_ex[0]
   
     # Find the positions of the two electrons involved in the lists of
-    # occupied sites.
+    # occupied orbitals.
     iel = occ_i.index(ind_i)
     jel = occ_j.index(ind_j)
   
@@ -278,6 +282,8 @@ class SpinlessHubbard:
       diag_pos = self.diag_pos[i]
       self.hamil.data[diag_pos] = self.hamil_diag[i]
       # Loop over all occupied sites in determinant i.
+      # In the case of the spinless Hubbard model, orbitals and sites
+      # are in a one-to-one mapping, so we don't need to distinguish.
       for site in self.dets[i]:
         self.hamil.data[diag_pos] += V[site]
 
