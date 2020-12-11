@@ -1,11 +1,10 @@
 from absl import app
 from absl import flags
 from data import Data
-from hubbard import Hubbard
-from spinless_hubbard import SpinlessHubbard
+from hamiltonian import Hubbard, SpinlessHubbard
+import json
 import networks
 import train
-import json
 
 import torch
 import torch.nn as nn
@@ -113,16 +112,7 @@ def main(argv):
 
   torch.manual_seed(FLAGS.seed)
 
-  #system = SpinlessHubbard(
-  #    U=FLAGS.U,
-  #    t=FLAGS.t,
-  #    mu=FLAGS.mu,
-  #    max_V=FLAGS.max_potential,
-  #    nsites=FLAGS.nsites,
-  #    fixed_nparticles=FLAGS.fixed_nparticles,
-  #    nparticles=FLAGS.nparticles,
-  #    seed=FLAGS.seed)
-  system = Hubbard(
+  system = SpinlessHubbard(
       U=FLAGS.U,
       t=FLAGS.t,
       mu=FLAGS.mu,
@@ -130,9 +120,18 @@ def main(argv):
       nsites=FLAGS.nsites,
       fixed_nparticles=FLAGS.fixed_nparticles,
       nparticles=FLAGS.nparticles,
-      fixed_Ms=FLAGS.fixed_Ms,
-      Ms=FLAGS.Ms,
       seed=FLAGS.seed)
+  #system = Hubbard(
+  #    U=FLAGS.U,
+  #    t=FLAGS.t,
+  #    mu=FLAGS.mu,
+  #    max_V=FLAGS.max_potential,
+  #    nsites=FLAGS.nsites,
+  #    fixed_nparticles=FLAGS.fixed_nparticles,
+  #    nparticles=FLAGS.nparticles,
+  #    fixed_Ms=FLAGS.fixed_Ms,
+  #    Ms=FLAGS.Ms,
+  #    seed=FLAGS.seed)
   system.construct()
 
   # -- training data ------
