@@ -35,7 +35,6 @@ class Infidelity(nn.Module):
 def train(net,
           data_train,
           data_validation,
-          data_test,
           criterion,
           optimizer,
           nepochs,
@@ -53,8 +52,6 @@ def train(net,
     The training data.
   data_validation : Data object
     The validation data.
-  data_test : Data object
-    The test data.
   criterion : torch criterion object
     Used to measure the loss function between predicted and targeted
     data.
@@ -176,7 +173,7 @@ def print_data_comparison(net, data, data_label):
     The neural network to be used in the comparison.
   data : Data object
     Object holding a set of data points.
-  data_label :
+  data_label : int
     The index of the data point to be considered, in the data arrays.
   """
   print('\nComparing the exact output to the predicted output for a '

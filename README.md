@@ -34,3 +34,5 @@ flags can be viewed with
 ```
 python3 deep_hk/main.py --help
 ```
+Alternatively, a training script can be written directly, with an example
+given in the examples/hubbard/ directoy.

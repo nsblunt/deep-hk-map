@@ -1,4 +1,4 @@
-from wave_function import WaveFunction
+from deep_hk.wave_function import WaveFunction
 from torch.utils.data import Dataset
 import torch
 import ast

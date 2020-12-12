@@ -1,10 +1,7 @@
 from absl import app
 from absl import flags
-from data import Data
-from hamiltonian import Hubbard, SpinlessHubbard
+from deep_hk import data, hamiltonian, train, networks
 import json
-import networks
-import train
 
 import torch
 import torch.nn as nn
@@ -116,7 +113,7 @@ def main(argv):
   torch.manual_seed(FLAGS.seed)
 
   if FLAGS.system == 'spinless_hubbard':
-    system = SpinlessHubbard(
+    system = hamiltonian.SpinlessHubbard(
         U=FLAGS.U,
         t=FLAGS.t,
         mu=FLAGS.mu,
@@ -126,7 +123,7 @@ def main(argv):
         nparticles=FLAGS.nparticles,
         seed=FLAGS.seed)
   elif FLAGS.system == 'hubbard':
-    system = Hubbard(
+    system = hamiltonian.Hubbard(
         U=FLAGS.U,
         t=FLAGS.t,
         mu=FLAGS.mu,
@@ -140,7 +137,7 @@ def main(argv):
   system.construct()
 
   # -- training data ------
-  data_train = Data(
+  data_train = data.Data(
       system=system,
       ndata=FLAGS.ntrain,
       input_type=FLAGS.input_type,
@@ -153,7 +150,7 @@ def main(argv):
 
   # -- validation data ------
   if FLAGS.nvalidation > 0:
-    data_valid = Data(
+    data_valid = data.Data(
         system=system,
         ndata=FLAGS.nvalidation,
         input_type=FLAGS.input_type,
@@ -167,7 +164,7 @@ def main(argv):
     data_valid = None
 
   # -- test data ------
-  data_test = Data(
+  data_test = data.Data(
       system=system,
       ndata=FLAGS.ntest,
       input_type=FLAGS.input_type,
@@ -223,7 +220,6 @@ def main(argv):
       net=net,
       data_train=data_train,
       data_validation=data_valid,
-      data_test=data_test,
       criterion=criterion,
       optimizer=optimizer,
       nepochs=FLAGS.nepochs,
