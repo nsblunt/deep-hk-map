@@ -1,10 +1,6 @@
 from absl import app
 from absl import flags
-from data import Data
-from system import SpinlessHubbard
-from wave_function import WaveFunction
-import networks
-import train
+from deep_hk import data, hamiltonian, train, networks
 import json
 
 import torch
@@ -15,12 +11,19 @@ FLAGS = flags.FLAGS
 flag_dict_init = FLAGS.flag_values_dict()
 
 # Define the system.
+flags.DEFINE_enum(
+    'system', 'spinless_hubbard', ['spinless_hubbard', 'hubbard'],
+    'Define the type of system being studied.')
 flags.DEFINE_integer('nsites', 4, 'Number of lattice sites.')
 flags.DEFINE_integer('nparticles', 2, 'Number of particles.')
+flags.DEFINE_boolean('fixed_Ms', True, 'If true then use a fixed-Ms '
+    'sector. This is not used in the case of spinless systems.')
+flags.DEFINE_integer('Ms', 0, 'Total spin of the system (in units of '
+    'electron spin). This is not used in the case of spinless systems.')
 flags.DEFINE_float('U', 1.0, 'Parameter U in the spinless Hubbard model.')
 flags.DEFINE_float('t', 1.0, 'Parameter t in the spinless Hubbard model.')
 flags.DEFINE_float('mu', 0.0, 'Chemical potential parameter.')
-flags.DEFINE_float('max_potential', 2.0, 'The maximum absolute value of '
+flags.DEFINE_float('max_potential', 0.5, 'The maximum absolute value of '
     'random potentials applied on any given site.')
 flags.DEFINE_integer('seed', 7, 'Seed for the random number generator.')
 flags.DEFINE_boolean(
@@ -109,19 +112,32 @@ def main(argv):
 
   torch.manual_seed(FLAGS.seed)
 
-  system = SpinlessHubbard(
-      U=FLAGS.U,
-      t=FLAGS.t,
-      mu=FLAGS.mu,
-      max_V=FLAGS.max_potential,
-      nsites=FLAGS.nsites,
-      fixed_nparticles=FLAGS.fixed_nparticles,
-      nparticles=FLAGS.nparticles,
-      seed=FLAGS.seed)
+  if FLAGS.system == 'spinless_hubbard':
+    system = hamiltonian.SpinlessHubbard(
+        U=FLAGS.U,
+        t=FLAGS.t,
+        mu=FLAGS.mu,
+        max_V=FLAGS.max_potential,
+        nsites=FLAGS.nsites,
+        fixed_nparticles=FLAGS.fixed_nparticles,
+        nparticles=FLAGS.nparticles,
+        seed=FLAGS.seed)
+  elif FLAGS.system == 'hubbard':
+    system = hamiltonian.Hubbard(
+        U=FLAGS.U,
+        t=FLAGS.t,
+        mu=FLAGS.mu,
+        max_V=FLAGS.max_potential,
+        nsites=FLAGS.nsites,
+        fixed_nparticles=FLAGS.fixed_nparticles,
+        nparticles=FLAGS.nparticles,
+        fixed_Ms=FLAGS.fixed_Ms,
+        Ms=FLAGS.Ms,
+        seed=FLAGS.seed)
   system.construct()
 
   # -- training data ------
-  data_train = Data(
+  data_train = data.Data(
       system=system,
       ndata=FLAGS.ntrain,
       input_type=FLAGS.input_type,
@@ -134,7 +150,7 @@ def main(argv):
 
   # -- validation data ------
   if FLAGS.nvalidation > 0:
-    data_valid = Data(
+    data_valid = data.Data(
         system=system,
         ndata=FLAGS.nvalidation,
         input_type=FLAGS.input_type,
@@ -148,7 +164,7 @@ def main(argv):
     data_valid = None
 
   # -- test data ------
-  data_test = Data(
+  data_test = data.Data(
       system=system,
       ndata=FLAGS.ntest,
       input_type=FLAGS.input_type,
@@ -204,7 +220,6 @@ def main(argv):
       net=net,
       data_train=data_train,
       data_validation=data_valid,
-      data_test=data_test,
       criterion=criterion,
       optimizer=optimizer,
       nepochs=FLAGS.nepochs,

@@ -1,4 +1,4 @@
-from wave_function import WaveFunction
+from deep_hk.wave_function import WaveFunction
 from torch.utils.data import Dataset
 import torch
 import ast
@@ -137,6 +137,7 @@ class Data(Dataset):
       
       wf = WaveFunction(
           nsites=system.nsites,
+          nspin=system.nspin,
           dets=system.dets)
 
       wf.solve_eigenvalue(system.hamil)
