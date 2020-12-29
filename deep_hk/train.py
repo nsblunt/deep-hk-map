@@ -8,7 +8,7 @@ class Infidelity(nn.Module):
   r"""A loss function that uses the infidelity of a wave function,
     defined as:
 
-    I(\psi_p, psi_e) = 1 - |\langle \psi_p | \psi_e \rangle|.
+    I(\psi_p, \psi_e) = 1 - |\langle \psi_p | \psi_e \rangle|.
 
     In other words, unity minus the overlap of the predicted and exact
     wave functions.
