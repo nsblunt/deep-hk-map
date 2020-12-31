@@ -34,10 +34,10 @@ flags can be viewed with
 ```
 python3 deep_hk/main.py --help
 ```
-Alternatively, a training script can be written directly, with an example
+Alternatively, a training script can be written directly, with examples
 given in the examples/hubbard/ directoy.
 
-## Jupyter notebook example
+## Notebook example
 
 Also provided is a short tutorial as a Jupyter notebook, available in the
 examples directory.
