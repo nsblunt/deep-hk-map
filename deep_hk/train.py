@@ -63,6 +63,8 @@ def train(net,
     The number of epochs to perform.
   batch_size : int
     The number of data points passed in each batch.
+  device : torch.device object
+    Specifies whether we are using a CPU or GPU for training.
   save_net : bool
     If True, save the network state to a file at regular intervals.
   save_root : string
@@ -143,8 +145,6 @@ def print_net_accuracy(
     criterion,
     device=torch.device('cpu')):
   """Calculate and print the loss for both training and test data.
-     Also, calculate the norms and print these together with the
-     training and test data values for comparison.
 
   Args
   ----
@@ -157,6 +157,8 @@ def print_net_accuracy(
   criterion : Torch criterion object
     Used to measure the loss function between the predicted and
     targeted data.
+  device : torch.device object
+    Specifies whether we are using a CPU or GPU for training.
   """
   # Apply the network to the training data.
   inputs_train = data_train.inputs.to(device)
@@ -171,6 +173,30 @@ def print_net_accuracy(
   outputs_test = net(inputs_test)
   test_loss = criterion(outputs_test, labels_test)
   print('Test loss: {:.8f}\n'.format(test_loss))
+
+def print_exact_vs_predicted(
+    net,
+    data_test,
+    device=torch.device('cpu')):
+  """Calculate the predicted output for the test data, and compare
+     it to the true labels. This is done by calculating the norms
+     of the predicted labels and true labels, and also by comparing
+     the first element of each data point. These values are printed.
+
+  Args
+  ----
+  net : network object
+    The neural network to be used in the comparison.
+  data_test : Data object
+    The test data.
+  device : torch.device object
+    Specifies whether we are using a CPU or GPU for training.
+  """
+
+  # Apply the network to the test data.
+  inputs_test = data_test.inputs.to(device)
+  labels_test = data_test.labels.to(device)
+  outputs_test = net(inputs_test)
 
   output_norms = [torch.norm(row) for row in outputs_test]
   labels_norms = [torch.norm(row) for row in data_test.labels]
@@ -206,6 +232,8 @@ def print_data_comparison(
     Object holding a set of data points.
   data_label : int
     The index of the data point to be considered, in the data arrays.
+  device : torch.device object
+    Specifies whether we are using a CPU or GPU for training.
   """
   print('\nComparing the exact output to the predicted output for a '
         'single test example...')

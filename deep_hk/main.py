@@ -117,12 +117,10 @@ def main(argv):
   torch.manual_seed(FLAGS.seed)
 
   # Define the device to perform training on.
-  device = torch.device('cpu')
-  if FLAGS.device == 'gpu':
-    if torch.cuda.is_available():
-      device = torch.device("cuda:0")
-    else:
-      raise AssertionError('CUDA device not available.')
+  use_cuda = FLAGS.device == 'gpu'
+  if use_cuda and not torch.cuda.is_available():
+    raise AssertionError('CUDA device not available.')
+  device = torch.device('cuda:0' if use_cuda else 'cpu')
 
   # Define and create the Hamiltonian object.
   if FLAGS.system == 'spinless_hubbard':
@@ -252,20 +250,6 @@ def main(argv):
       data_test,
       criterion,
       device=device)
-
-  data_label = 0
-  train.print_data_comparison(
-      net,
-      data_test,
-      data_label,
-      device=device)
-
-  if FLAGS.assess_energy_from_wf and FLAGS.output_type == 'wave_function':
-    train.assess_predicted_energies(
-        net=net,
-        data=data_test,
-        criterion=nn.L1Loss(),
-        device=device)
 
 if __name__ == '__main__':
   app.run(main)
