@@ -39,6 +39,7 @@ def train(net,
           optimizer,
           nepochs,
           batch_size,
+          device=torch.device('cpu'),
           save_net=False,
           save_root='./network',
           save_net_every=100):
@@ -89,8 +90,10 @@ def train(net,
 
     for batch_inputs, batch_labels in data_loader:
       optimizer.zero_grad()
-      batch_outputs = net(batch_inputs)
-      loss = criterion(batch_outputs, batch_labels)
+      inputs = batch_inputs.to(device)
+      labels = batch_labels.to(device)
+      outputs = net(inputs)
+      loss = criterion(outputs, labels)
       loss.backward()
       optimizer.step()
 
@@ -102,8 +105,10 @@ def train(net,
       print('{:10d}    {:12.8f}'.format(epoch, av_loss), flush=True)
     else:
       # Calculate the loss for validation data.
-      valid_outputs = net(data_validation.inputs)
-      valid_loss = criterion(valid_outputs, data_validation.labels)
+      valid_inputs = data_validation.inputs.to(device)
+      valid_labels = data_validation.labels.to(device)
+      valid_outputs = net(valid_inputs)
+      valid_loss = criterion(valid_outputs, valid_labels)
       print('{:10d}    {:12.8f}    {:12.8f}'.format(
           epoch,
           av_loss,
@@ -118,7 +123,12 @@ def train(net,
 
   print(flush=True)
 
-def print_net_accuracy(net, data_train, data_test, criterion):
+def print_net_accuracy(
+    net,
+    data_train,
+    data_test,
+    criterion,
+    device=torch.device('cpu')):
   """Calculate and print the loss for both training and test data.
      Also, calculate the norms and print these together with the
      training and test data values for comparison.
@@ -136,13 +146,17 @@ def print_net_accuracy(net, data_train, data_test, criterion):
     targeted data.
   """
   # Apply the network to the training data.
-  outputs_train = net(data_train.inputs)
-  train_loss = criterion(outputs_train, data_train.labels)
+  inputs_train = data_train.inputs.to(device)
+  labels_train = data_train.labels.to(device)
+  outputs_train = net(inputs_train)
+  train_loss = criterion(outputs_train, labels_train)
   print('Training loss: {:.8f}'.format(train_loss))
 
   # Apply the network to the test data.
-  outputs_test = net(data_test.inputs)
-  test_loss = criterion(outputs_test, data_test.labels)
+  inputs_test = data_test.inputs.to(device)
+  labels_test = data_test.labels.to(device)
+  outputs_test = net(inputs_test)
+  test_loss = criterion(outputs_test, labels_test)
   print('Test loss: {:.8f}\n'.format(test_loss))
 
   output_norms = [torch.norm(row) for row in outputs_test]
@@ -163,7 +177,11 @@ def print_net_accuracy(net, data_train, data_test, criterion):
         float(predicted_norm)
     ))
 
-def print_data_comparison(net, data, data_label):
+def print_data_comparison(
+    net,
+    data,
+    data_label,
+    device=torch.device('cpu')):
   """For the requested data point, print the predicted and target values
      for each output unit. Also, print the potential of this data point.
 
@@ -190,7 +208,8 @@ def print_data_comparison(net, data, data_label):
       ))
 
   # Calculate the predicted values.
-  outputs = net(data.inputs)
+  inputs = data.inputs.to(device)
+  outputs = net(inputs)
 
   # Print the predicted values against the target values, for each
   # output unit.
@@ -202,7 +221,11 @@ def print_data_comparison(net, data, data_label):
         float(outputs[data_label][i])
     ))
 
-def assess_predicted_energies(net, data, criterion):
+def assess_predicted_energies(
+    net,
+    data,
+    criterion,
+    device=torch.device('cpu')):
   """For a network that predicts the wave function as its output, this
      function uses this output to calculate the variational energy
      estimator, and compares these predicted energies to exact values.
@@ -216,7 +239,8 @@ def assess_predicted_energies(net, data, criterion):
   criterion : torch criterion object
     A loss function object, to compare the predicted and exact energies.
   """
-  wf_predicted = net(data.inputs)
+  inputs = data.inputs.to(device)
+  wf_predicted = net(inputs)
   e_predicted = torch.zeros(data.ndata)
 
   e_target = torch.FloatTensor(data.energies)
