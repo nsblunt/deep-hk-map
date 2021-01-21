@@ -10,6 +10,10 @@ import torch.optim as optim
 FLAGS = flags.FLAGS
 flag_dict_init = FLAGS.flag_values_dict()
 
+# Define the device: CPU or GPU.
+flags.DEFINE_enum('device', 'cpu', ['cpu', 'gpu'], 'Define whether '
+    'to perform training on the CPU or GPU.')
+
 # Define the system.
 flags.DEFINE_enum(
     'system', 'spinless_hubbard', ['spinless_hubbard', 'hubbard'],
@@ -20,8 +24,8 @@ flags.DEFINE_boolean('fixed_Ms', True, 'If true then use a fixed-Ms '
     'sector. This is not used in the case of spinless systems.')
 flags.DEFINE_integer('Ms', 0, 'Total spin of the system (in units of '
     'electron spin). This is not used in the case of spinless systems.')
-flags.DEFINE_float('U', 1.0, 'Parameter U in the spinless Hubbard model.')
-flags.DEFINE_float('t', 1.0, 'Parameter t in the spinless Hubbard model.')
+flags.DEFINE_float('U', 1.0, 'Parameter U in the Hubbard model.')
+flags.DEFINE_float('t', 1.0, 'Parameter t in the Hubbard model.')
 flags.DEFINE_float('mu', 0.0, 'Chemical potential parameter.')
 flags.DEFINE_float('max_potential', 0.5, 'The maximum absolute value of '
     'random potentials applied on any given site.')
@@ -112,6 +116,13 @@ def main(argv):
 
   torch.manual_seed(FLAGS.seed)
 
+  # Define the device to perform training on.
+  use_cuda = FLAGS.device == 'gpu'
+  if use_cuda and not torch.cuda.is_available():
+    raise AssertionError('CUDA device not available.')
+  device = torch.device('cuda:0' if use_cuda else 'cpu')
+
+  # Define and create the Hamiltonian object.
   if FLAGS.system == 'spinless_hubbard':
     system = hamiltonian.SpinlessHubbard(
         U=FLAGS.U,
@@ -136,7 +147,7 @@ def main(argv):
         seed=FLAGS.seed)
   system.construct()
 
-  # -- training data ------
+  # Create the data sets.
   data_train = data.Data(
       system=system,
       ndata=FLAGS.ntrain,
@@ -148,7 +159,6 @@ def main(argv):
       const_potential_sum=FLAGS.const_potential_sum,
       potential_sum_val=FLAGS.potential_sum_val)
 
-  # -- validation data ------
   if FLAGS.nvalidation > 0:
     data_valid = data.Data(
         system=system,
@@ -163,7 +173,6 @@ def main(argv):
   else:
     data_valid = None
 
-  # -- test data ------
   data_test = data.Data(
       system=system,
       ndata=FLAGS.ntest,
@@ -178,7 +187,7 @@ def main(argv):
   ninput = data_train.ninput
   noutput = data_train.noutput
 
-  # Linear networks
+  # Fully-connected networks.
   if FLAGS.net_type == 'linear':
     layer_widths = [int(s) for s in FLAGS.layer_widths]
     layers_list = networks.create_linear_layers(
@@ -189,7 +198,7 @@ def main(argv):
     net = networks.LinearNet(
         layers_list,
         FLAGS.activation_fn)
-  # Convolutional networks
+  # Convolutional networks.
   elif FLAGS.net_type == 'conv':
     output_channels = [int(s) for s in FLAGS.output_channels]
     layers_list = networks.create_conv1d_layers(
@@ -203,18 +212,21 @@ def main(argv):
         ninput,
         FLAGS.activation_fn)
 
+  net = net.to(device)
+
   if FLAGS.load_net:
     net.load(FLAGS.load_path)
 
+  # Define the loss function.
   if FLAGS.output_type == 'wave_function':
     criterion = train.Infidelity()
   else:
     criterion = nn.L1Loss()
 
   optimizer = optim.Adam(
-    net.parameters(),
-    lr=FLAGS.lr,
-    amsgrad=False)
+      net.parameters(),
+      lr=FLAGS.lr,
+      amsgrad=False)
 
   train.train(
       net=net,
@@ -224,6 +236,7 @@ def main(argv):
       optimizer=optimizer,
       nepochs=FLAGS.nepochs,
       batch_size=FLAGS.batch_size,
+      device=device,
       save_net=FLAGS.save_net,
       save_root=FLAGS.save_root,
       save_net_every=FLAGS.save_net_every)
@@ -235,19 +248,8 @@ def main(argv):
       net,
       data_train,
       data_test,
-      criterion)
-
-  data_label = 0
-  train.print_data_comparison(
-      net,
-      data_test,
-      data_label)
-
-  if FLAGS.assess_energy_from_wf and FLAGS.output_type == 'wave_function':
-    train.assess_predicted_energies(
-        net=net,
-        data=data_test,
-        criterion=nn.L1Loss())
+      criterion,
+      device=device)
 
 if __name__ == '__main__':
   app.run(main)

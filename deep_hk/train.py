@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from itertools import count
+import time
 
 
 class Infidelity(nn.Module):
@@ -39,6 +40,7 @@ def train(net,
           optimizer,
           nepochs,
           batch_size,
+          device=torch.device('cpu'),
           save_net=False,
           save_root='./network',
           save_net_every=100):
@@ -61,6 +63,8 @@ def train(net,
     The number of epochs to perform.
   batch_size : int
     The number of data points passed in each batch.
+  device : torch.device object
+    Specifies whether we are using a CPU or GPU for training.
   save_net : bool
     If True, save the network state to a file at regular intervals.
   save_root : string
@@ -72,9 +76,11 @@ def train(net,
   """
   # Print the header.
   if data_validation is None:
-    print('# 1. Epoch' + 2*' ' + '2. Train. Loss')
+    print('# 1. Epoch' + 2*' ' + '2. Train. Loss' + 3*' ' +
+          '3. Epoch time')
   else:
-    print('# 1. Epoch' + 2*' ' + '2. Train. Loss' + 2*' ' + '3. Valid. loss')
+    print('# 1. Epoch' + 2*' ' + '2. Train. Loss' + 2*' ' +
+          '3. Valid. loss' + 3*' ' + '4. Epoch time')
 
   data_loader = DataLoader(
       data_train,
@@ -84,13 +90,16 @@ def train(net,
 
   # Train the network.
   for epoch in range(nepochs):
+    start_time = time.time()
     total_loss = 0.0
     nbatches = 0
 
     for batch_inputs, batch_labels in data_loader:
       optimizer.zero_grad()
-      batch_outputs = net(batch_inputs)
-      loss = criterion(batch_outputs, batch_labels)
+      inputs = batch_inputs.to(device)
+      labels = batch_labels.to(device)
+      outputs = net(inputs)
+      loss = criterion(outputs, labels)
       loss.backward()
       optimizer.step()
 
@@ -99,15 +108,26 @@ def train(net,
     av_loss = total_loss/nbatches
 
     if data_validation is None:
-      print('{:10d}    {:12.8f}'.format(epoch, av_loss), flush=True)
-    else:
-      # Calculate the loss for validation data.
-      valid_outputs = net(data_validation.inputs)
-      valid_loss = criterion(valid_outputs, data_validation.labels)
+      end_time = time.time()
+      epoch_time = end_time - start_time
       print('{:10d}    {:12.8f}    {:12.8f}'.format(
           epoch,
           av_loss,
-          valid_loss
+          epoch_time
+      ), flush=True)
+    else:
+      # Calculate the loss for validation data.
+      valid_inputs = data_validation.inputs.to(device)
+      valid_labels = data_validation.labels.to(device)
+      valid_outputs = net(valid_inputs)
+      valid_loss = criterion(valid_outputs, valid_labels)
+      end_time = time.time()
+      epoch_time = end_time - start_time
+      print('{:10d}    {:12.8f}    {:12.8f}    {:12.8f}'.format(
+          epoch,
+          av_loss,
+          valid_loss,
+          epoch_time,
       ), flush=True)
 
     if save_net:
@@ -118,10 +138,13 @@ def train(net,
 
   print(flush=True)
 
-def print_net_accuracy(net, data_train, data_test, criterion):
+def print_net_accuracy(
+    net,
+    data_train,
+    data_test,
+    criterion,
+    device=torch.device('cpu')):
   """Calculate and print the loss for both training and test data.
-     Also, calculate the norms and print these together with the
-     training and test data values for comparison.
 
   Args
   ----
@@ -134,16 +157,46 @@ def print_net_accuracy(net, data_train, data_test, criterion):
   criterion : Torch criterion object
     Used to measure the loss function between the predicted and
     targeted data.
+  device : torch.device object
+    Specifies whether we are using a CPU or GPU for training.
   """
   # Apply the network to the training data.
-  outputs_train = net(data_train.inputs)
-  train_loss = criterion(outputs_train, data_train.labels)
+  inputs_train = data_train.inputs.to(device)
+  labels_train = data_train.labels.to(device)
+  outputs_train = net(inputs_train)
+  train_loss = criterion(outputs_train, labels_train)
   print('Training loss: {:.8f}'.format(train_loss))
 
   # Apply the network to the test data.
-  outputs_test = net(data_test.inputs)
-  test_loss = criterion(outputs_test, data_test.labels)
+  inputs_test = data_test.inputs.to(device)
+  labels_test = data_test.labels.to(device)
+  outputs_test = net(inputs_test)
+  test_loss = criterion(outputs_test, labels_test)
   print('Test loss: {:.8f}\n'.format(test_loss))
+
+def print_exact_vs_predicted(
+    net,
+    data_test,
+    device=torch.device('cpu')):
+  """Calculate the predicted output for the test data, and compare
+     it to the true labels. This is done by calculating the norms
+     of the predicted labels and true labels, and also by comparing
+     the first element of each data point. These values are printed.
+
+  Args
+  ----
+  net : network object
+    The neural network to be used in the comparison.
+  data_test : Data object
+    The test data.
+  device : torch.device object
+    Specifies whether we are using a CPU or GPU for training.
+  """
+
+  # Apply the network to the test data.
+  inputs_test = data_test.inputs.to(device)
+  labels_test = data_test.labels.to(device)
+  outputs_test = net(inputs_test)
 
   output_norms = [torch.norm(row) for row in outputs_test]
   labels_norms = [torch.norm(row) for row in data_test.labels]
@@ -163,7 +216,11 @@ def print_net_accuracy(net, data_train, data_test, criterion):
         float(predicted_norm)
     ))
 
-def print_data_comparison(net, data, data_label):
+def print_data_comparison(
+    net,
+    data,
+    data_label,
+    device=torch.device('cpu')):
   """For the requested data point, print the predicted and target values
      for each output unit. Also, print the potential of this data point.
 
@@ -175,6 +232,8 @@ def print_data_comparison(net, data, data_label):
     Object holding a set of data points.
   data_label : int
     The index of the data point to be considered, in the data arrays.
+  device : torch.device object
+    Specifies whether we are using a CPU or GPU for training.
   """
   print('\nComparing the exact output to the predicted output for a '
         'single test example...')
@@ -190,7 +249,8 @@ def print_data_comparison(net, data, data_label):
       ))
 
   # Calculate the predicted values.
-  outputs = net(data.inputs)
+  inputs = data.inputs.to(device)
+  outputs = net(inputs)
 
   # Print the predicted values against the target values, for each
   # output unit.
@@ -202,7 +262,11 @@ def print_data_comparison(net, data, data_label):
         float(outputs[data_label][i])
     ))
 
-def assess_predicted_energies(net, data, criterion):
+def assess_predicted_energies(
+    net,
+    data,
+    criterion,
+    device=torch.device('cpu')):
   """For a network that predicts the wave function as its output, this
      function uses this output to calculate the variational energy
      estimator, and compares these predicted energies to exact values.
@@ -216,7 +280,8 @@ def assess_predicted_energies(net, data, criterion):
   criterion : torch criterion object
     A loss function object, to compare the predicted and exact energies.
   """
-  wf_predicted = net(data.inputs)
+  inputs = data.inputs.to(device)
+  wf_predicted = net(inputs)
   e_predicted = torch.zeros(data.ndata)
 
   e_target = torch.FloatTensor(data.energies)
