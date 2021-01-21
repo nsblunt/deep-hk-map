@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from itertools import count
+import time
 
 
 class Infidelity(nn.Module):
@@ -73,9 +74,11 @@ def train(net,
   """
   # Print the header.
   if data_validation is None:
-    print('# 1. Epoch' + 2*' ' + '2. Train. Loss')
+    print('# 1. Epoch' + 2*' ' + '2. Train. Loss' + 3*' ' +
+          '3. Epoch time')
   else:
-    print('# 1. Epoch' + 2*' ' + '2. Train. Loss' + 2*' ' + '3. Valid. loss')
+    print('# 1. Epoch' + 2*' ' + '2. Train. Loss' + 2*' ' +
+          '3. Valid. loss' + 3*' ' + '4. Epoch time')
 
   data_loader = DataLoader(
       data_train,
@@ -85,6 +88,7 @@ def train(net,
 
   # Train the network.
   for epoch in range(nepochs):
+    start_time = time.time()
     total_loss = 0.0
     nbatches = 0
 
@@ -102,17 +106,26 @@ def train(net,
     av_loss = total_loss/nbatches
 
     if data_validation is None:
-      print('{:10d}    {:12.8f}'.format(epoch, av_loss), flush=True)
+      end_time = time.time()
+      epoch_time = end_time - start_time
+      print('{:10d}    {:12.8f}    {:12.8f}'.format(
+          epoch,
+          av_loss,
+          epoch_time
+      ), flush=True)
     else:
       # Calculate the loss for validation data.
       valid_inputs = data_validation.inputs.to(device)
       valid_labels = data_validation.labels.to(device)
       valid_outputs = net(valid_inputs)
       valid_loss = criterion(valid_outputs, valid_labels)
-      print('{:10d}    {:12.8f}    {:12.8f}'.format(
+      end_time = time.time()
+      epoch_time = end_time - start_time
+      print('{:10d}    {:12.8f}    {:12.8f}    {:12.8f}'.format(
           epoch,
           av_loss,
-          valid_loss
+          valid_loss,
+          epoch_time,
       ), flush=True)
 
     if save_net:
