@@ -1,3 +1,6 @@
+"""Define the class to store wave function solutions to the Hamiltonian
+   eigenvalue problem, and to calculate corresponding properties."""
+
 import numpy as np
 from scipy.sparse.linalg import eigsh
 from itertools import count

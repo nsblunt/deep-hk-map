@@ -1,3 +1,5 @@
+"""Utilities for defining and creating network models."""
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

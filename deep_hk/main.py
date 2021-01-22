@@ -1,6 +1,8 @@
+"""Learn maps between properties and observables for lattice models."""
+
 from absl import app
 from absl import flags
-from deep_hk import data, hamiltonian, train, networks
+from deep_hk import assess, data, hamiltonian, networks, train
 import json
 
 import torch
@@ -244,7 +246,7 @@ def main(argv):
   if FLAGS.save_final_net:
     net.save(FLAGS.save_final_path)
 
-  train.print_net_accuracy(
+  assess.print_net_accuracy(
       net,
       data_train,
       data_test,

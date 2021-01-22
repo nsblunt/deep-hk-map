@@ -1,3 +1,5 @@
+"""Class for generating and storing data sets to use during learning."""
+
 from deep_hk.wave_function import WaveFunction
 from torch.utils.data import Dataset
 import torch

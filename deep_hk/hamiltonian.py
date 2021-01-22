@@ -1,3 +1,5 @@
+"""Define and construct Hamiltonian objects for lattice models."""
+
 import abc
 from heapq import merge
 import itertools
