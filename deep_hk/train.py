@@ -1,9 +1,11 @@
 """Functions to train models of maps between lattice model properties."""
 
+from deep_hk.data import MultipleDatasets
+import time
+
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-import time
 
 class Infidelity(nn.Module):
   r"""A loss function that uses the infidelity of a wave function,
@@ -50,7 +52,7 @@ def train(net,
   ----
   net : network object
     The neural network to be trained.
-  data_train : Data object
+  data_train : Data object or list of Data objects
     The training data.
   data_validation : Data object
     The validation data.
@@ -82,8 +84,13 @@ def train(net,
     print('# 1. Epoch' + 2*' ' + '2. Train. Loss' + 2*' ' +
           '3. Valid. loss' + 3*' ' + '4. Epoch time')
 
+  if isinstance(data_train, tuple):
+    data_train_all = MultipleDatasets(data_train)
+  else:
+    data_train_all = data_train
+
   data_loader = DataLoader(
-      data_train,
+      data_train_all,
       batch_size=batch_size,
       shuffle=False,
       num_workers=0)

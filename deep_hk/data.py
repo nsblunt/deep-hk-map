@@ -5,6 +5,7 @@ from torch.utils.data import Dataset
 import torch
 import ast
 import csv
+import random
 import time
 
 class Data(Dataset):
@@ -208,3 +209,67 @@ class Data(Dataset):
       for i, row in enumerate(reader):
         self.inputs[i,:] = torch.FloatTensor(ast.literal_eval(row[0]))
         self.labels[i,:] = torch.FloatTensor(ast.literal_eval(row[1]))
+
+
+class MultipleDatasets(Data):
+  """Object for storing multiple different datasets, which can be
+     accessed simultanesouly by a DataLoader object."""
+
+  def __init__(self, datasets):
+    self.datasets = datasets
+    self.ndatasets = len(datasets)
+    self.ndata = sum(len(d) for d in self.datasets)
+
+    # Displacements of each data set within the full list
+    self.displs = [0] * self.ndatasets
+    for i in range(1, self.ndatasets):
+      self.displs[i] = self.displs[i-1] + self.datasets[i-1].ndata
+
+    # Dictionary used to define the ordering of data from the
+    # various datasets.
+    self.indices = {}
+
+    # Use a random ordering, using random.shuffle.
+    self.indices = self.create_random_ordering()
+
+  def __len__(self):
+    """Return the number of data points."""
+    return self.ndata
+
+  def __getitem__(self, index):
+    """Return the input labelled by index, and the associated label."""
+    set_ind, data_ind = self.indices[index]
+    return self.datasets[set_ind].inputs[data_ind], \
+           self.datasets[set_ind].labels[data_ind]
+
+  def create_random_ordering(self):
+    indices = {}
+    data_inds = [i for i in range(self.ndata)]
+    random.shuffle(data_inds)
+    for i in range(self.ndata):
+      n = data_inds[i]
+      set_ind = find_pos(n, self.displs)
+      data_ind = n - self.displs[set_ind]
+      indices[i] = (set_ind, data_ind)
+    return indices
+
+def find_pos(ind, displs):
+  """Find the position of ind relative to the displacement values stored
+     in the displs list. This is used by MultipleDatasets objects; here
+     displs[n] refers to the index of the first data point from dataset n.
+
+    Args
+    ----
+    ind : int
+      A position index.
+    displs : list of int
+      An increasing list of integers, representing the first position
+      of each piece of data from n'th data set, where n is an index
+      of displs.
+  """
+
+  for i in range(1, len(displs)):
+    if ind < displs[i]:
+      return i-1
+
+  return len(displs) - 1
