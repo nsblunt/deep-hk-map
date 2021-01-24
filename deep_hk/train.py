@@ -36,17 +36,41 @@ class Infidelity(nn.Module):
     return loss
 
 def criterion_list(criterion, outputs, labels):
+  """Apply the criterion to outputs and labels, which are both lists.
+
+  Args
+  ----
+  criterion : torch criterion object
+    Used to measure the loss function between predicted and targeted
+    data.
+  outputs : list of 1d torch tensors
+    Tensors holding the input data points in their rows. Each tensor
+    corresponds to data of a given input size.
+  labels : list of 1d torch tensors
+    Tensors holding the labels for the inputs in their rows. Each
+    tensor corresponds to data of a given input size.
+  """
   ndata = 0
   loss = torch.FloatTensor([0.0])
   for output, label in zip(outputs, labels):
     nbatch = output.size()[0]
-    #loss += nbatch*torch.mean(torch.abs(output - label))
     loss += nbatch * criterion(output, label)
     ndata += nbatch
   loss /= ndata
   return loss
 
 def collate_as_list_of_tensors(batch):
+  """Merge a batch of data into lists of 2d tensors, each tensor
+     corresponding to a given input size.
+
+  Args
+  ----
+  batch : list of tuples
+    Contains the data for the batch. The list length is equal to the
+    number of data points in the batch. For each data point, the
+    tuple contains the input as its first element, and the label as
+    its second element.
+  """
   input_sizes = []
   # Indexed by the input size:
   inputs = {}
@@ -208,6 +232,7 @@ def train(net,
         valid_labels = data_validation.labels.to(device)
       valid_outputs = net(valid_inputs)
       valid_loss = criterion(valid_outputs, valid_labels)
+
       end_time = time.time()
       epoch_time = end_time - start_time
       print('{:10d}    {:12.8f}    {:12.8f}    {:12.8f}'.format(
