@@ -96,61 +96,6 @@ def create_linear_layers(ninput,
 
   return layers_list
 
-def create_conv1d_layers(ninput,
-                         noutput,
-                         num_in_channels,
-                         num_out_channels,
-                         kernel_size):
-  """Create a list of Torch conv1d layer objects. The final layer is
-     fully connected, outputting noutput values.
-
-  Args
-  ----
-  ninput : int
-    The number of values passed into the input of the network.
-  noutput : int
-    The number of values passed out of the network.
-  num_in_channels : int
-    The number of channels for the input data.
-  num_out_channels : list of int
-    A list specifying the number of output channels for each
-    convolutional layer. The length of this list is also used to
-    specify the number of such layers in total.
-  kernel_size : int
-    The size of the kernel applied in convolutional layers.
-  """
-
-  layers_list = []
-
-  padding = int((kernel_size-1)/2)
-
-  # input layer:
-  layers_list.append( nn.Conv1d(
-      in_channels=num_in_channels,
-      out_channels=num_out_channels[0],
-      kernel_size=kernel_size,
-      padding=padding,
-      padding_mode='circular')
-  )
-
-  # hidden layers:
-  for i in range(1, len(num_out_channels)):
-    layers_list.append( nn.Conv1d(
-        in_channels=num_out_channels[i-1],
-        out_channels=num_out_channels[i],
-        kernel_size=kernel_size,
-        padding=padding,
-        padding_mode='circular')
-    )
-
-  # output layer (fully connected):
-  layers_list.append( nn.Linear(
-      in_features=ninput*num_out_channels[-1],
-      out_features=noutput)
-  )
-
-  return layers_list
-
 
 class LinearNet(nn.Module):
   """A neural network of linear (affine) layers."""
@@ -218,12 +163,85 @@ class LinearNet(nn.Module):
     self.eval()
 
 
+def create_conv1d_layers(num_in_channels,
+                         num_out_channels,
+                         kernel_size,
+                         ninput=None,
+                         noutput=None,
+                         maxpool_final=False):
+  """Create a list of Torch conv1d layer objects. The final layer is
+     fully connected, outputting noutput values.
+
+  Args
+  ----
+  num_in_channels : int
+    The number of channels for the input data.
+  num_out_channels : list of int
+    A list specifying the number of output channels for each
+    convolutional layer. The length of this list is also used to
+    specify the number of such layers in total.
+  kernel_size : int
+    The size of the kernel applied in convolutional layers.
+  ninput : int
+    The number of values passed into the input of the network. This is
+    not used if maxpool_final=True, in which case can use ninput=None.
+  noutput : int
+    The number of values passed out of the network.
+  maxpool_final : bool
+    If true then we assume a max pooling layer will be applied to each
+    output channel from the final convolutional hidden layer.
+    This affects the size of the input to the fully connected layer.
+  """
+
+  layers_list = []
+
+  padding = int((kernel_size-1)/2)
+
+  # input layer:
+  layers_list.append( nn.Conv1d(
+      in_channels=num_in_channels,
+      out_channels=num_out_channels[0],
+      kernel_size=kernel_size,
+      padding=padding,
+      padding_mode='circular')
+  )
+
+  # hidden layers:
+  for i in range(1, len(num_out_channels)):
+    layers_list.append( nn.Conv1d(
+        in_channels=num_out_channels[i-1],
+        out_channels=num_out_channels[i],
+        kernel_size=kernel_size,
+        padding=padding,
+        padding_mode='circular')
+    )
+
+  # output layer (fully connected):
+  if maxpool_final:
+    layers_list.append( nn.Linear(
+        in_features=num_out_channels[-1],
+        out_features=noutput)
+    )
+  else:
+    layers_list.append( nn.Linear(
+        in_features=ninput*num_out_channels[-1],
+        out_features=noutput)
+    )
+
+  return layers_list
+
+
 class ConvNet(nn.Module):
   """A network of convolutional layers. The final layer is a fully
      connected linear layer.
   """
 
-  def __init__(self, layers_list, ninput, activation_fn):
+  def __init__(
+      self,
+      layers_list,
+      ninput=None,
+      activation_fn='relu',
+      maxpool_final=False):
     """Initialises the network layers.
 
     Args
@@ -233,19 +251,28 @@ class ConvNet(nn.Module):
       including the input and output layers. This can be created, for
       example, using the create_linear_layers function.
     ninput : int
-      The number of features passed into the net.
+      The number of features passed into the net. Not used if
+      maxpool_final=True, in which case one can set ninput=None.
     activation_fn : string
       String representing the activation function, which is used to
       select a torch function below.
+    maxpool_final : bool
+      If true then apply a max pooling layer to each output channel
+      from the final convolutional hidden layer.
     """
     super(ConvNet, self).__init__()
+
     self.layers = nn.ModuleList(layers_list)
     self.activation_fn = activation_fn
+    self.maxpool_final = maxpool_final
 
     # Number of ouput channels from the final convolutional layer.
     out_channels_final = self.layers[-2].out_channels
     # Number of features input to the final layer.
-    self.nfeatures_final = out_channels_final * ninput
+    if self.maxpool_final:
+      self.nfeatures_final = out_channels_final
+    else:
+      self.nfeatures_final = out_channels_final * ninput
 
     if activation_fn == 'relu':
       self.activation_fn = nn.ReLU()
@@ -270,6 +297,10 @@ class ConvNet(nn.Module):
     # Apply the convolutional layers.
     for layer in self.layers[:-1]:
       x = self.activation_fn(layer(x))
+
+    # Apply max pool to each channel.
+    if self.maxpool_final:
+      x, _ = torch.max(x, dim=2)
 
     # Merge the output channels together.
     x = x.view(-1, self.nfeatures_final)

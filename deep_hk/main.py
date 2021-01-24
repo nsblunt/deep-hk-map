@@ -204,15 +204,17 @@ def main(argv):
   elif FLAGS.net_type == 'conv':
     output_channels = [int(s) for s in FLAGS.output_channels]
     layers_list = networks.create_conv1d_layers(
-        ninput,
-        noutput,
         num_in_channels=1,
         num_out_channels=output_channels,
-        kernel_size=FLAGS.kernel_size)
+        kernel_size=FLAGS.kernel_size,
+        ninput=ninput,
+        noutput=noutput,
+        maxpool_final=False)
     net = networks.ConvNet(
         layers_list,
-        ninput,
-        FLAGS.activation_fn)
+        ninput=ninput,
+        FLAGS.activation_fn,
+        maxpool_final=False)
 
   net = net.to(device)
 

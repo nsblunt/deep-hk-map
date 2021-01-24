@@ -35,6 +35,51 @@ class Infidelity(nn.Module):
     loss = 1 - torch.mean(torch.abs(dot_products))
     return loss
 
+def criterion_list(criterion, outputs, labels):
+  ndata = 0
+  loss = torch.FloatTensor([0.0])
+  for output, label in zip(outputs, labels):
+    nbatch = output.size()[0]
+    #loss += nbatch*torch.mean(torch.abs(output - label))
+    loss += nbatch * criterion(output, label)
+    ndata += nbatch
+  loss /= ndata
+  return loss
+
+def collate_as_list_of_tensors(batch):
+  input_sizes = []
+  # Indexed by the input size:
+  inputs = {}
+  labels = {}
+
+  for input, label in batch:
+    input_size = len(input)
+    if input_size in input_sizes:
+      inputs[input_size].append(input)
+      labels[input_size].append(label)
+    if input_size not in input_sizes:
+      input_sizes.append(input_size)
+      inputs[input_size] = [input]
+      labels[input_size] = [label]
+
+  # Merge the entries for a given input size into a 2d tensor.
+  # Do this for every input size, and store the results in a list.
+  inputs_list = []
+  labels_list = []
+  for input_size, v in inputs.items():
+    nbatch = len(v)
+    inputs_merged = torch.cat(v)
+    inputs_merged = inputs_merged.view(nbatch, input_size)
+    inputs_list.append(inputs_merged)
+  for ninput, v in labels.items():
+    nbatch = len(v)
+    label_size = len(label)
+    labels_merged = torch.cat(v)
+    labels_merged = labels_merged.view(nbatch, label_size)
+    labels_list.append(labels_merged)
+
+  return inputs_list, labels_list
+
 def train(net,
           data_train,
           data_validation,
@@ -84,16 +129,36 @@ def train(net,
     print('# 1. Epoch' + 2*' ' + '2. Train. Loss' + 2*' ' +
           '3. Valid. loss' + 3*' ' + '4. Epoch time')
 
+  # Create the DataLoader. If multiple data sets are being used then
+  # this has to be treated separately.
   if isinstance(data_train, tuple):
     data_train_all = MultipleDatasets(data_train)
+    input_sizes = [dat.ninput for dat in data_train]
+    output_sizes = [dat.noutput for dat in data_train]
+    # Are all input/output sizes the same?
+    fixed_ninput = input_sizes.count(input_sizes[0]) == len(input_sizes)
+    fixed_noutput = output_sizes.count(output_sizes[0]) == len(output_sizes)
   else:
     data_train_all = data_train
+    fixed_ninput = True
+    fixed_noutput = True
 
-  data_loader = DataLoader(
-      data_train_all,
-      batch_size=batch_size,
-      shuffle=False,
-      num_workers=0)
+  if fixed_ninput:
+    data_loader = DataLoader(
+        data_train_all,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=0)
+  else:
+    # Different sized inputs in the batch. We therefore want to collate
+    # data as a list of 2d tensors, each of a given input size, rather
+    # than a single 2d tensor.
+    data_loader = DataLoader(
+        data_train_all,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=0,
+        collate_fn=collate_as_list_of_tensors)
 
   # Train the network.
   for epoch in range(nepochs):
@@ -103,10 +168,24 @@ def train(net,
 
     for batch_inputs, batch_labels in data_loader:
       optimizer.zero_grad()
-      inputs = batch_inputs.to(device)
-      labels = batch_labels.to(device)
-      outputs = net(inputs)
-      loss = criterion(outputs, labels)
+
+      # Apply the network and calculate the loss function.
+      if isinstance(batch_inputs, list):
+        # Inputs and labels are a list of 2d tensors.
+        outputs = []
+        labels = [x.to(device) for x in batch_labels]
+        for inputs in batch_inputs:
+          # inputs is a 2d tensor for a single input size.
+          inputs = inputs.to(device)
+          outputs.append(net(inputs))
+        loss = criterion_list(criterion, outputs, labels)
+      else:
+        # Inputs and labels are a single 2d tensor each.
+        inputs = batch_inputs.to(device)
+        labels = batch_labels.to(device)
+        outputs = net(inputs)
+        loss = criterion(outputs, labels)
+
       loss.backward()
       optimizer.step()
 
@@ -124,8 +203,9 @@ def train(net,
       ), flush=True)
     else:
       # Calculate the loss for validation data.
-      valid_inputs = data_validation.inputs.to(device)
-      valid_labels = data_validation.labels.to(device)
+      if not isinstance(inputs, list):
+        valid_inputs = data_validation.inputs.to(device)
+        valid_labels = data_validation.labels.to(device)
       valid_outputs = net(valid_inputs)
       valid_loss = criterion(valid_outputs, valid_labels)
       end_time = time.time()
