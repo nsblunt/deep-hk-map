@@ -145,7 +145,7 @@ def train(net,
   net : network object
     The neural network to be trained.
   data_train : Data object or tuple of Data objects
-    The training data.
+    The training data set(s).
   data_validation : Tuple of Data objects
     The validation data set(s).
   criterion : torch criterion object
@@ -170,36 +170,25 @@ def train(net,
   """
   print_header(data_validation)
 
-  # Create the DataLoader. If multiple data sets are being used then
-  # this has to be treated separately.
-  if isinstance(data_train, tuple):
-    data_train_all = MultipleDatasets(data_train)
-    input_sizes = [dat.ninput for dat in data_train]
-    output_sizes = [dat.noutput for dat in data_train]
-    # Are all input/output sizes the same?
-    fixed_ninput = input_sizes.count(input_sizes[0]) == len(input_sizes)
-    fixed_noutput = output_sizes.count(output_sizes[0]) == len(output_sizes)
-  else:
-    data_train_all = data_train
-    fixed_ninput = True
-    fixed_noutput = True
+  # For consistency, we just convert data_train to a tuple if
+  # it isn't already.
+  if not isinstance(data_train, tuple):
+    data_train = (data_train,)
 
-  if fixed_ninput:
-    data_loader = DataLoader(
-        data_train_all,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=0)
-  else:
-    # Different sized inputs in the batch. We therefore want to collate
-    # data as a list of 2d tensors, each of a given input size, rather
-    # than a single 2d tensor.
-    data_loader = DataLoader(
-        data_train_all,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=0,
-        collate_fn=collate_as_list_of_tensors)
+  # Concatenate data sets, in case we have multiple in use.
+  data_train_all = MultipleDatasets(data_train)
+  input_sizes = [dat.ninput for dat in data_train]
+  output_sizes = [dat.noutput for dat in data_train]
+  # Are all input/output sizes the same?
+  fixed_ninput = input_sizes.count(input_sizes[0]) == len(input_sizes)
+  fixed_noutput = output_sizes.count(output_sizes[0]) == len(output_sizes)
+
+  data_loader = DataLoader(
+      data_train_all,
+      batch_size=batch_size,
+      shuffle=False,
+      num_workers=0,
+      collate_fn=collate_as_list_of_tensors)
 
   # Train the network.
   for epoch in range(nepochs):
@@ -210,23 +199,16 @@ def train(net,
     for batch_inputs, batch_labels in data_loader:
       optimizer.zero_grad()
 
-      # Apply the network and calculate the loss function.
-      if isinstance(batch_inputs, list):
-        # Inputs and labels are a list of 2d tensors.
-        outputs = []
-        labels = [x.to(device) for x in batch_labels]
-        for inputs in batch_inputs:
-          # inputs is a 2d tensor for a single input size.
-          inputs = inputs.to(device)
-          outputs.append(net(inputs))
-        loss = criterion_list(criterion, outputs, labels, device)
-      else:
-        # Inputs and labels are a single 2d tensor each.
-        inputs = batch_inputs.to(device)
-        labels = batch_labels.to(device)
-        outputs = net(inputs)
-        loss = criterion(outputs, labels)
+      # Inputs and labels are a list of 2d tensors.
+      # Each corresponds to all data for a given input size.
+      outputs = []
+      labels = [x.to(device) for x in batch_labels]
+      for inputs in batch_inputs:
+        # inputs is a 2d tensor for a single input size.
+        inputs = inputs.to(device)
+        outputs.append(net(inputs))
 
+      loss = criterion_list(criterion, outputs, labels, device)
       loss.backward()
       optimizer.step()
 
