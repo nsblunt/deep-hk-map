@@ -35,7 +35,7 @@ class Infidelity(nn.Module):
     loss = 1 - torch.mean(torch.abs(dot_products))
     return loss
 
-def criterion_list(criterion, outputs, labels):
+def criterion_list(criterion, outputs, labels, device):
   """Apply the criterion to outputs and labels, which are both lists.
 
   Args
@@ -49,9 +49,12 @@ def criterion_list(criterion, outputs, labels):
   labels : list of 1d torch tensors
     Tensors holding the labels for the inputs in their rows. Each
     tensor corresponds to data of a given input size.
+  device : torch.device object
+    The device on which outputs and labels are held (cpu or cuda).
   """
   ndata = 0
   loss = torch.FloatTensor([0.0])
+  loss = loss.to(device)
   for output, label in zip(outputs, labels):
     nbatch = output.size()[0]
     loss += nbatch * criterion(output, label)
@@ -135,7 +138,7 @@ def train(net,
   batch_size : int
     The number of data points passed in each batch.
   device : torch.device object
-    Specifies whether we are using a CPU or GPU for training.
+    The device on which training will be performed.
   save_net : bool
     If True, save the network state to a file at regular intervals.
   save_root : string
@@ -202,7 +205,7 @@ def train(net,
           # inputs is a 2d tensor for a single input size.
           inputs = inputs.to(device)
           outputs.append(net(inputs))
-        loss = criterion_list(criterion, outputs, labels)
+        loss = criterion_list(criterion, outputs, labels, device)
       else:
         # Inputs and labels are a single 2d tensor each.
         inputs = batch_inputs.to(device)
@@ -227,9 +230,8 @@ def train(net,
       ), flush=True)
     else:
       # Calculate the loss for validation data.
-      if not isinstance(inputs, list):
-        valid_inputs = data_validation.inputs.to(device)
-        valid_labels = data_validation.labels.to(device)
+      valid_inputs = data_validation.inputs.to(device)
+      valid_labels = data_validation.labels.to(device)
       valid_outputs = net(valid_inputs)
       valid_loss = criterion(valid_outputs, valid_labels)
 
