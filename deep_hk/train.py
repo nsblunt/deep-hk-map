@@ -107,6 +107,26 @@ def collate_as_list_of_tensors(batch):
 
   return inputs_list, labels_list
 
+def print_header(data_validation=None):
+  """Print the header for the table of data during training.
+
+  Args
+  ----
+  data_validation : Tuple of Data objects
+    The validation data set(s).
+  """
+
+  if data_validation is None:
+    print('# 1. Epoch' + 2*' ' + '2. Train. Loss' + 3*' ' +
+          '3. Epoch time')
+  else:
+    print('# 1. Epoch' + 2*' ' + '2. Train. Loss', end='')
+    col_ind = 3
+    for i in range(len(data_validation)):
+      print('  {:1d}. Valid. loss {:1d}'.format(col_ind, i), end='')
+      col_ind += 1
+    print('   {:1d}. Epoch time'.format(col_ind))
+
 def train(net,
           data_train,
           data_validation,
@@ -124,10 +144,10 @@ def train(net,
   ----
   net : network object
     The neural network to be trained.
-  data_train : Data object or list of Data objects
+  data_train : Data object or tuple of Data objects
     The training data.
-  data_validation : Data object
-    The validation data.
+  data_validation : Tuple of Data objects
+    The validation data set(s).
   criterion : torch criterion object
     Used to measure the loss function between predicted and targeted
     data.
@@ -148,13 +168,7 @@ def train(net,
     The frequency (in epochs) at which the network will be saved to a
     file, if save_net is True.
   """
-  # Print the header.
-  if data_validation is None:
-    print('# 1. Epoch' + 2*' ' + '2. Train. Loss' + 3*' ' +
-          '3. Epoch time')
-  else:
-    print('# 1. Epoch' + 2*' ' + '2. Train. Loss' + 2*' ' +
-          '3. Valid. loss' + 3*' ' + '4. Epoch time')
+  print_header(data_validation)
 
   # Create the DataLoader. If multiple data sets are being used then
   # this has to be treated separately.
@@ -230,19 +244,23 @@ def train(net,
       ), flush=True)
     else:
       # Calculate the loss for validation data.
-      valid_inputs = data_validation.inputs.to(device)
-      valid_labels = data_validation.labels.to(device)
-      valid_outputs = net(valid_inputs)
-      valid_loss = criterion(valid_outputs, valid_labels)
+      valid_loss = []
+      for data in data_validation:
+        valid_inputs = data.inputs.to(device)
+        valid_labels = data.labels.to(device)
+        valid_outputs = net(valid_inputs)
+        loss = criterion(valid_outputs, valid_labels)
+        loss = loss.to(torch.device('cpu'))
+        loss = loss.item()
+        valid_loss.append(loss)
 
       end_time = time.time()
       epoch_time = end_time - start_time
-      print('{:10d}    {:12.8f}    {:12.8f}    {:12.8f}'.format(
-          epoch,
-          av_loss,
-          valid_loss,
-          epoch_time,
-      ), flush=True)
+
+      print('{:10d}    {:12.8f}'.format(epoch, av_loss), end='')
+      for loss in valid_loss:
+        print('      {:12.8f}'.format(loss), end='')
+      print('    {:12.8f}'.format(epoch_time), flush=True)
 
     if save_net:
       if epoch % save_net_every == save_net_every-1:

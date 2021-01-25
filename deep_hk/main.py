@@ -172,6 +172,8 @@ def main(argv):
         path='data_valid.csv',
         const_potential_sum=FLAGS.const_potential_sum,
         potential_sum_val=FLAGS.potential_sum_val)
+    # Convert to a tuple for input into the train function.
+    data_valid = (data_valid,)
   else:
     data_valid = None
 
@@ -213,7 +215,7 @@ def main(argv):
     net = networks.ConvNet(
         layers_list,
         ninput=ninput,
-        FLAGS.activation_fn,
+        activation_fn=FLAGS.activation_fn,
         maxpool_final=False)
 
   net = net.to(device)
