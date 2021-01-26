@@ -49,7 +49,7 @@ class NormalizedLinear(nn.Module):
     Args
     ----
     x : torch tensor of dim (size_in)
-      the data to be passed into the layer.
+      The data passed through the layer.
     """
     w_times_x = torch.mm(x, self.weights.t())
     with_bias = torch.add(w_times_x, self.bias)
@@ -58,6 +58,81 @@ class NormalizedLinear(nn.Module):
         p=2,
         dim=1)
     return out
+
+
+class SpatialPyramidPooling(nn.Module):
+  """Layer to perform spatial pyramid max pooling."""
+
+  def __init__(self, ndivisions):
+    """Initialise the layer object.
+
+    Args
+    ----
+    ndivisions : int
+      The number of times to divide up each feature map, with max
+      pooling applied to each divided section of the map.
+
+    """
+    super().__init__()
+    self.ndivisions = ndivisions
+
+  def get_output_size(self, nchannels):
+    """Calculate how many output values there will be from this layer."""
+
+    noutput = 0
+    for i in range(self.ndivisions):
+      noutput += nchannels * int(math.pow(2,i))
+
+    return noutput
+
+  def forward(self, x):
+    """Apply the pooling to the input tensor, x.
+
+    Args
+    ----
+    x : torch tensor of dim (batch_size, num_channels, num_features)
+      The data passed through the layer.
+    """
+
+    if self.ndivisions > 0:
+      nchannels = x.size()[1]
+      nfeatures = x.size()[2]
+
+      # Start with the kernal size equal to the size of the featre map.
+      # This first pooling will then be a global pooling operation.
+      pool_kernel_size = nfeatures
+
+      max_kernel_fraction = int(math.pow(2, self.ndivisions-1))
+      if not nfeatures % max_kernel_fraction == 0:
+        raise AssertionError('Pyramid pooling with this value of ndivisions is '
+                             'not consistent with the size of the feature map.')
+
+      # Will hold the output to be returned.
+      x_final = None
+
+      # Loop over all divisions of the feature maps.
+      for i in range(self.ndivisions):
+        pool_layer = nn.MaxPool1d(
+            kernel_size=pool_kernel_size,
+            stride=pool_kernel_size)
+        x_pooled = pool_layer(x)
+
+        noutput_pool = nchannels * int(math.pow(2,i))
+
+        # Merge the output channels together.
+        x_joined = x_pooled.view(-1, noutput_pool)
+
+        # Merge the output with that of previous pooling operations,
+        # if there have been any yet.
+        if x_final is None:
+          x_final = x_joined
+        else:
+          x_final = torch.cat((x_joined, x_final), 1)
+
+        # Half the size of the kernel to be applied next time.
+        pool_kernel_size = pool_kernel_size // 2
+
+    return x_final
 
 
 def create_linear_layers(ninput,
@@ -342,6 +417,7 @@ class ResConvNet(nn.Module):
       nchannels,
       nblocks,
       noutput,
+      ndivisions=1,
       with_skip=True,
       activation_fn='relu'):
     """Initialises the network layers.
@@ -369,6 +445,7 @@ class ResConvNet(nn.Module):
     self.nchannels = nchannels
     self.nblocks = nblocks
     self.noutput = noutput
+    self.ndivisions = ndivisions
     self.with_skip = with_skip
 
     self.kernel_size = 3
@@ -390,13 +467,16 @@ class ResConvNet(nn.Module):
         padding=self.padding,
         padding_mode='circular')
 
+    self.pooling_layer = SpatialPyramidPooling(self.ndivisions)
+
+    self.nfeatures_final = self.pooling_layer.get_output_size(self.nchannels)
+
     # final layer:
     self.fc_layer = nn.Linear(
-        in_features=self.nchannels,
+        in_features=self.nfeatures_final,
         out_features=noutput)
 
     self.activation_fn = activation_fn
-    self.nfeatures_final = self.nchannels
 
     if activation_fn == 'relu':
       self.activation_fn = nn.ReLU()
@@ -442,11 +522,8 @@ class ResConvNet(nn.Module):
         x = x + inp
       x = self.activation_fn(x)
 
-    # Apply max pool to each channel.
-    x, _ = torch.max(x, dim=2)
-
-    # Merge the output channels together.
-    x = x.view(-1, self.nfeatures_final)
+    # Merge to a fixed size output using spatial pyramid pooling
+    x = self.pooling_layer(x)
 
     # Fully connected output layer.
     x = self.fc_layer(x)
