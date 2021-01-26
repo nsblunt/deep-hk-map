@@ -107,8 +107,8 @@ class LinearNet(nn.Module):
     ----
     layers_list : list
       A list of the layers to be applied between nonlinearities,
-      including the input and output layers. This can be created, for
-      example, using the create_linear_layers function.
+      including the input and output layers. This should be created
+      using the create_linear_layers function.
     activation_fn : string
       String representing the activation function, which is used to
       select a torch function below.
@@ -248,8 +248,8 @@ class ConvNet(nn.Module):
     ----
     layers_list : list
       A list of the layers to be applied between nonlinearities,
-      including the input and output layers. This can be created, for
-      example, using the create_linear_layers function.
+      including the input and output layers. This should be created
+      using the create_conv1d_layers function.
     ninput : int
       The number of features passed into the net. Not used if
       maxpool_final=True, in which case one can set ninput=None.
@@ -307,6 +307,149 @@ class ConvNet(nn.Module):
 
     # Fully connected output layer.
     x = self.layers[-1](x)
+    return x
+
+  def save(self, path):
+    """Save the net state to a file.
+
+    Args
+    ----
+    path : string
+      The path and name of the file where the network will be saved.
+    """
+    torch.save(self.state_dict(), path)
+
+  def load(self, path):
+    """Load the network state from a file.
+
+    Args
+    ----
+    path : string
+      The path and name of the file where the network will be loaded
+      from.
+    """
+    self.load_state_dict(torch.load(path))
+    self.eval()
+
+
+class ResConvNet(nn.Module):
+  """A network of convolutional layers with optional skip connections,
+     as in residual neural networks.
+  """
+
+  def __init__(
+      self,
+      nchannels,
+      nblocks,
+      noutput,
+      with_skip=True,
+      activation_fn='relu'):
+    """Initialises the network layers.
+
+    Args
+    ----
+    nchannels : int
+      The number of input and output channels to and from each
+      convolutiona layer (except for the first layer, which has a
+      single input channel).
+    nblocks : int
+      The number of blocks applied. Each block consists of two
+      convolutional layers, with the option of a skip connection before
+      the second activation function is applied.
+    noutput : int
+      The number of values passed out of the network.
+    with_skip : bool
+      If true, then use skip connections, i.e. use a ResNet.
+    activation_fn : string
+      String representing the activation function, which is used to
+      select a torch function below.
+    """
+    super(ResConvNet, self).__init__()
+
+    self.nchannels = nchannels
+    self.nblocks = nblocks
+    self.noutput = noutput
+    self.with_skip = with_skip
+
+    self.kernel_size = 3
+    self.padding = int((self.kernel_size-1)/2)
+
+    # input layer:
+    self.input_layer = nn.Conv1d(
+        in_channels=1,
+        out_channels=self.nchannels,
+        kernel_size=self.kernel_size,
+        padding=self.padding,
+        padding_mode='circular')
+
+    # hidden layers:
+    self.hidden_layer = nn.Conv1d(
+        in_channels=self.nchannels,
+        out_channels=self.nchannels,
+        kernel_size=self.kernel_size,
+        padding=self.padding,
+        padding_mode='circular')
+
+    # final layer:
+    self.fc_layer = nn.Linear(
+        in_features=self.nchannels,
+        out_features=noutput)
+
+    self.activation_fn = activation_fn
+    self.nfeatures_final = self.nchannels
+
+    if activation_fn == 'relu':
+      self.activation_fn = nn.ReLU()
+    elif activation_fn == 'elu':
+      self.activation_fn = nn.ELU()
+    elif activation_fn == 'sigmoid':
+      self.activation_fn = nn.Sigmoid()
+    elif activation_fn == 'tanh':
+      self.activation_fn = nn.Tanh()
+
+  def forward(self, x):
+    """Pass the input through the network.
+
+    Args
+    ----
+    x : torch tensor
+      The batch of input data to be passed through the network.
+    """
+    # Need to add a dimension, recognised as the single input channel.
+    x = x[:, None, :]
+
+    # Each block applies two convolutional layers, with a skip
+    # connection optionally applied before the second activation
+    # function is applied.
+
+    # Apply the convolutional layers.
+    # Input block.
+    if self.with_skip:
+      inp = x
+    x = self.activation_fn(self.input_layer(x))
+    x = self.hidden_layer(x)
+    if self.with_skip:
+      x = x + inp
+    x = self.activation_fn(x)
+
+    # Hidden blocks.
+    for block in range(1, self.nblocks):
+      if self.with_skip:
+        inp = x
+      x = self.activation_fn(self.hidden_layer(x))
+      x = self.hidden_layer(x)
+      if self.with_skip:
+        x = x + inp
+      x = self.activation_fn(x)
+
+    # Apply max pool to each channel.
+    x, _ = torch.max(x, dim=2)
+
+    # Merge the output channels together.
+    x = x.view(-1, self.nfeatures_final)
+
+    # Fully connected output layer.
+    x = self.fc_layer(x)
     return x
 
   def save(self, path):
