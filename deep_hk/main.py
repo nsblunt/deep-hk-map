@@ -209,12 +209,11 @@ def main(argv):
         num_in_channels=1,
         num_out_channels=output_channels,
         kernel_size=FLAGS.kernel_size,
-        ninput=ninput,
-        noutput=noutput,
         maxpool_final=False)
     net = networks.ConvNet(
         layers_list,
         ninput=ninput,
+        noutput=noutput,
         activation_fn=FLAGS.activation_fn,
         maxpool_final=False)
 

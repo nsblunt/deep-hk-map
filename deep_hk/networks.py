@@ -241,11 +241,8 @@ class LinearNet(nn.Module):
 def create_conv1d_layers(num_in_channels,
                          num_out_channels,
                          kernel_size,
-                         ninput=None,
-                         noutput=None,
                          maxpool_final=False):
-  """Create a list of Torch conv1d layer objects. The final layer is
-     fully connected, outputting noutput values.
+  """Create a list of Torch conv1d layer objects.
 
   Args
   ----
@@ -257,11 +254,6 @@ def create_conv1d_layers(num_in_channels,
     specify the number of such layers in total.
   kernel_size : int
     The size of the kernel applied in convolutional layers.
-  ninput : int
-    The number of values passed into the input of the network. This is
-    not used if maxpool_final=True, in which case can use ninput=None.
-  noutput : int
-    The number of values passed out of the network.
   maxpool_final : bool
     If true then we assume a max pooling layer will be applied to each
     output channel from the final convolutional hidden layer.
@@ -291,18 +283,6 @@ def create_conv1d_layers(num_in_channels,
         padding_mode='circular')
     )
 
-  # output layer (fully connected):
-  if maxpool_final:
-    layers_list.append( nn.Linear(
-        in_features=num_out_channels[-1],
-        out_features=noutput)
-    )
-  else:
-    layers_list.append( nn.Linear(
-        in_features=ninput*num_out_channels[-1],
-        out_features=noutput)
-    )
-
   return layers_list
 
 
@@ -315,8 +295,10 @@ class ConvNet(nn.Module):
       self,
       layers_list,
       ninput=None,
+      noutput=None,
       activation_fn='relu',
-      maxpool_final=False):
+      maxpool_final=False,
+      ndivisions=1):
     """Initialises the network layers.
 
     Args
@@ -326,28 +308,42 @@ class ConvNet(nn.Module):
       including the input and output layers. This should be created
       using the create_conv1d_layers function.
     ninput : int
-      The number of features passed into the net. Not used if
+      The number of values passed into the net. Not used if
       maxpool_final=True, in which case one can set ninput=None.
+    noutput : int
+      The number of values passed out of the network.
     activation_fn : string
       String representing the activation function, which is used to
       select a torch function below.
     maxpool_final : bool
-      If true then apply a max pooling layer to each output channel
-      from the final convolutional hidden layer.
+      If true then apply spatial pyramid max pooling layer after the final
+      convolutional layer, and before the fully connected layer.
+    ndivisions : int
+      The number of divisions applied in the spatial pyramid pooling
+      layer, which is the number of different kernel sizes applied.
+      Only used if maxpool_final is True.
     """
     super(ConvNet, self).__init__()
 
     self.layers = nn.ModuleList(layers_list)
+    self.ninput = ninput
+    self.noutput = noutput
     self.activation_fn = activation_fn
     self.maxpool_final = maxpool_final
+    self.ndivisions = ndivisions
 
     # Number of ouput channels from the final convolutional layer.
-    out_channels_final = self.layers[-2].out_channels
+    out_channels = self.layers[-1].out_channels
     # Number of features input to the final layer.
     if self.maxpool_final:
-      self.nfeatures_final = out_channels_final
+      self.pooling_layer = SpatialPyramidPooling(self.ndivisions)
+      self.nfeatures_final = self.pooling_layer.get_output_size(out_channels)
     else:
-      self.nfeatures_final = out_channels_final * ninput
+      self.nfeatures_final = out_channels * self.ninput
+
+    self.fc = nn.Linear(
+        in_features=self.nfeatures_final,
+        out_features=self.noutput)
 
     if activation_fn == 'relu':
       self.activation_fn = nn.ReLU()
@@ -370,18 +366,19 @@ class ConvNet(nn.Module):
     x = x[:, None, :]
 
     # Apply the convolutional layers.
-    for layer in self.layers[:-1]:
+    for layer in self.layers:
       x = self.activation_fn(layer(x))
 
-    # Apply max pool to each channel.
     if self.maxpool_final:
-      x, _ = torch.max(x, dim=2)
-
-    # Merge the output channels together.
-    x = x.view(-1, self.nfeatures_final)
+      # Merge to a fixed size output using spatial pyramid pooling,
+      # and also merge the output channels together.
+      x = self.pooling_layer(x)
+    else:
+      # Merge the output channels together.
+      x = x.view(-1, self.nfeatures_final)
 
     # Fully connected output layer.
-    x = self.layers[-1](x)
+    x = self.fc(x)
     return x
 
   def save(self, path):
@@ -434,6 +431,9 @@ class ResConvNet(nn.Module):
       the second activation function is applied.
     noutput : int
       The number of values passed out of the network.
+    ndivisions : int
+      The number of divisions applied in the spatial pyramid pooling
+      layer, which is the number of different kernel sizes applied.
     with_skip : bool
       If true, then use skip connections, i.e. use a ResNet.
     activation_fn : string
@@ -522,7 +522,7 @@ class ResConvNet(nn.Module):
         x = x + inp
       x = self.activation_fn(x)
 
-    # Merge to a fixed size output using spatial pyramid pooling
+    # Merge to a fixed size output using spatial pyramid pooling.
     x = self.pooling_layer(x)
 
     # Fully connected output layer.
