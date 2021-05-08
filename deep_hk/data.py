@@ -2,6 +2,7 @@
 
 from deep_hk.wave_function import WaveFunction
 from torch.utils.data import Dataset
+import numpy as np
 import torch
 import ast
 import csv
@@ -29,7 +30,7 @@ class Data(Dataset):
     system : SpinlessHubbard object
       The definition of the lattice model used.
     ndata : int
-      The number of data points to be read or generated.
+      The number of potentials to be read or generated.
     input_type : string
       String specifying what object is passed into the network.
     output_type : string
@@ -55,9 +56,9 @@ class Data(Dataset):
       The number of values passed into the network (for each data point).
     noutput : int
       The number of values passed out of the network.
-    inputs : torch tensor of type torch.float and size (ndata, ninput)
+    inputs : torch tensor of type torch.float and size (ndata_tot, ninput)
       Tensor holding the input data points in its rows.
-    outputs : torch tensor of type torch.float and size (ndata, noutput)
+    outputs : torch tensor of type torch.float and size (ndata_tot, noutput)
       Tensor holding the predicted labels in its rows.
     potentials : list of numpy ndarrays, each of size (system.nsites)
       Holds the potentials applied to generate each data point.
@@ -77,10 +78,27 @@ class Data(Dataset):
 
     self.print_timing = print_timing
 
+    # The number of data points for each potential generated.
+    # This is usually 1, but will be larger if passing in each
+    # configuration to the network also, as there are many
+    # configurations contributing to each wave function.
+    self.ndata_per_potential = 1
+
     if input_type == 'potential' or input_type == 'density':
       self.ninput = system.nsites
     elif input_type == '1-rdm':
       self.ninput = system.nsites**2
+    elif input_type == 'potential_and_config':
+      self.ninput = system.nsites + system.norbs
+      self.ndata_per_potential = system.ndets
+    elif input_type == 'potential_and_occ_str':
+      self.ninput = system.nsites + system.nparticles
+      self.ndata_per_potential = system.ndets
+    elif input_type == 'potential_and_det_ind':
+      self.ninput = system.nsites + 1
+      self.ndata_per_potential = system.ndets
+
+    self.ndata_tot = self.ndata * self.ndata_per_potential
 
     if output_type == 'energy':
       self.noutput = 1
@@ -92,6 +110,8 @@ class Data(Dataset):
       self.noutput = system.nsites**2
     elif output_type == 'corr_fn':
       self.noutput = system.nsites**2
+    elif output_type == 'coeff':
+      self.noutput = 1
 
     if load:
       self.load_csv(path)
@@ -124,10 +144,16 @@ class Data(Dataset):
       value that is enforced.
     """
     system = self.system
-    self.inputs = torch.zeros(self.ndata, self.ninput, dtype=torch.float)
-    self.labels = torch.zeros(self.ndata, self.noutput, dtype=torch.float)
+    self.inputs = torch.zeros(self.ndata_tot, self.ninput, dtype=torch.float)
+    self.labels = torch.zeros(self.ndata_tot, self.noutput, dtype=torch.float)
     self.potentials = []
     self.energies = []
+    det_ind = None
+
+    # Generate the configurations from the determinants stored,
+    # which will be the same every for every potential applied.
+    if self.input_type == 'potential_and_config':
+      system.generate_configs()
 
     t1 = time.perf_counter()
 
@@ -156,6 +182,23 @@ class Data(Dataset):
       elif self.input_type == '1-rdm':
         wf.calc_rdm1_gs()
         self.inputs[i,:] = torch.from_numpy(wf.rdm1_gs.flatten())
+      elif self.input_type == 'potential_and_config':
+        for j in range(system.ndets):
+          ind = i*system.ndets + j
+          config = system.configs[j]
+          self.inputs[ind,0:system.nsites] = torch.from_numpy(V)
+          self.inputs[ind,system.nsites:] = torch.from_numpy(config)
+      elif self.input_type == 'potential_and_occ_str':
+        for j in range(system.ndets):
+          ind = i*system.ndets + j
+          det = torch.from_numpy(np.asarray(system.dets[j]))
+          self.inputs[ind,0:system.nsites] = torch.from_numpy(V)
+          self.inputs[ind,system.nsites:] = det
+      elif self.input_type == 'potential_and_det_ind':
+        for j in range(system.ndets):
+          ind = i*system.ndets + j
+          self.inputs[ind,0:system.nsites] = torch.from_numpy(V)
+          self.inputs[ind,system.nsites:] = j
 
       if self.output_type == 'energy':
         self.labels[i,:] = wf.energies[0]
@@ -172,6 +215,10 @@ class Data(Dataset):
       elif self.output_type == 'corr_fn':
         wf.calc_corr_fn_gs()
         self.labels[i,:] = torch.from_numpy(wf.corr_fn_gs.flatten())
+      elif self.output_type == 'coeff':
+        for j in range(system.ndets):
+          ind = i*system.ndets + j
+          self.labels[ind,0] = abs(wf.coeffs[j,0])
 
     t2 = time.perf_counter()
 
@@ -200,8 +247,8 @@ class Data(Dataset):
     filename : string
       The name of the file where data will be loaded from.
     """
-    self.inputs = torch.zeros(self.ndata, self.ninput, dtype=torch.float)
-    self.labels = torch.zeros(self.ndata, self.noutput, dtype=torch.float)
+    self.inputs = torch.zeros(self.ndata_tot, self.ninput, dtype=torch.float)
+    self.labels = torch.zeros(self.ndata_tot, self.noutput, dtype=torch.float)
     with open(filename, 'r', newline='') as csv_file:
       reader = csv.reader(csv_file)
       # skip the header:
@@ -218,12 +265,12 @@ class MultipleDatasets(Data):
   def __init__(self, datasets):
     self.datasets = datasets
     self.ndatasets = len(datasets)
-    self.ndata = sum(len(d) for d in self.datasets)
+    self.ndata_tot = sum(len(d) for d in self.datasets)
 
     # Displacements of each data set within the full list
     self.displs = [0] * self.ndatasets
     for i in range(1, self.ndatasets):
-      self.displs[i] = self.displs[i-1] + self.datasets[i-1].ndata
+      self.displs[i] = self.displs[i-1] + self.datasets[i-1].ndata_tot
 
     # Dictionary used to define the ordering of data from the
     # various datasets.
@@ -234,7 +281,7 @@ class MultipleDatasets(Data):
 
   def __len__(self):
     """Return the number of data points."""
-    return self.ndata
+    return self.ndata_tot
 
   def __getitem__(self, index):
     """Return the input labelled by index, and the associated label."""
@@ -244,9 +291,9 @@ class MultipleDatasets(Data):
 
   def create_random_ordering(self):
     indices = {}
-    data_inds = [i for i in range(self.ndata)]
+    data_inds = [i for i in range(self.ndata_tot)]
     random.shuffle(data_inds)
-    for i in range(self.ndata):
+    for i in range(self.ndata_tot):
       n = data_inds[i]
       set_ind = find_pos(n, self.displs)
       data_ind = n - self.displs[set_ind]

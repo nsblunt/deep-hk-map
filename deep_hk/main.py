@@ -69,11 +69,12 @@ flags.DEFINE_float('lr', 0.001, 'The learning rate for the optimizer.')
 flags.DEFINE_enum('net_type', 'linear', ['linear', 'conv'], 'Specify which '
     'network type to use.')
 flags.DEFINE_enum(
-    'input_type', 'potential', ['potential', 'density', '1-rdm'], 'Specify '
-    'which object we pass into the network input.')
+    'input_type', 'potential', ['potential', 'density', '1-rdm',
+    'potential_and_config', 'potential_and_occ_str', 'potential_and_det_ind'],
+    'Specify which object we pass into the network input.')
 flags.DEFINE_enum('output_type', 'energy',
-    ['energy', 'wave_function', 'potential', 'density', '1-rdm', 'corr_fn'],
-    'Specify which object should be output by the network.')
+    ['energy', 'wave_function', 'potential', 'density', '1-rdm', 'corr_fn',
+    'coeff'], 'Specify which object should be output by the network.')
 flags.DEFINE_enum('activation_fn', 'relu',
     ['relu', 'elu', 'sigmoid', 'tanh'],
     'Define the activation function used.')

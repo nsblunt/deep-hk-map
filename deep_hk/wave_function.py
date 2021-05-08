@@ -4,6 +4,7 @@
 import numpy as np
 from scipy.sparse.linalg import eigsh
 from itertools import count
+import random
 
 class WaveFunction:
   """Class to store wave functions and calculate properties."""
@@ -166,3 +167,25 @@ class WaveFunction:
         print('{:6d}  {}  {: .8e}'.format(i, occ_i, coeff_i))
       else:
         print('{:6d}  {}  {: .8e}'.format(i, occ_i, 0.0))
+
+  def select_random_config(self):
+
+    # Generate list of cumulative squared coefficients
+    cum_coeffs = []
+    cum_value = 0.0
+    for coeff in self.coeffs[:,0]:
+      cum_value += coeff**2
+      cum_coeffs.append(cum_value)
+
+      rand = random.uniform(0.0, cum_value)
+
+    det_chosen_ind = None
+    for i, cum_value in enumerate(cum_coeffs):
+      if rand < cum_value:
+        det_chosen_ind = i
+        break
+
+    if det_chosen_ind is None:
+      det_chosen_ind = self.ndets-1
+
+    return det_chosen_ind

@@ -147,7 +147,7 @@ def assess_predicted_energies(
   """
   inputs = data.inputs.to(device)
   wf_predicted = net(inputs)
-  e_predicted = torch.zeros(data.ndata)
+  e_predicted = torch.zeros(data.ndata_tot)
 
   e_target = torch.FloatTensor(data.energies)
 
