@@ -372,7 +372,7 @@ class LatticeHamil(metaclass=abc.ABCMeta):
       The external potential.
     """
     self.add_potential_to_hamil(V)
-    energy = np.dot(wf, self.hamil.multiply(wf))
+    energy = np.dot(wf, self.hamil.dot(wf)) / np.dot(wf, wf)
     return energy
 
 
