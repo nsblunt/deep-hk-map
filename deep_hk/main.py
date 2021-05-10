@@ -109,6 +109,10 @@ flags.DEFINE_boolean('assess_energy_from_wf', 'False', 'If predicting '
     'a wave function as output, then calculate and print the associated '
     'energies for the test data.')
 
+flags.DEFINE_boolean('assess_energy_from_coeffs', 'False', 'If predicting '
+    'individual wave function coefficients as the output, then calculate '
+    'and print the associated energies for the test data.')
+
 def main(argv):
   del argv
 
@@ -256,6 +260,23 @@ def main(argv):
       data_test,
       criterion,
       device=device)
+
+  assess.assess_predicted_energies_from_coeffs(
+      net,
+      data_test,
+      criterion,
+      device=device)
+
+  assess.calc_infidelities_from_coeffs(
+      net,
+      data_test,
+      device=device)
+
+  #assess.assess_predicted_energies_from_wf(
+  #    net,
+  #    data_test,
+  #    criterion=nn.L1Loss(),
+  #    device=device)
 
 if __name__ == '__main__':
   app.run(main)

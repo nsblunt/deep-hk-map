@@ -198,10 +198,12 @@ class Data(Dataset):
             self.inputs[ind,0:system.nsites] = torch.from_numpy(V)
             self.inputs[ind,system.nsites:] = torch.from_numpy(config)
         else:
-          det_chosen = wf.select_random_config()
-          config = system.configs[det_chosen]
-          self.inputs[i,0:system.nsites] = torch.from_numpy(V)
-          self.inputs[i,system.nsites:] = torch.from_numpy(config)
+          inds_chosen = wf.select_random_configs(self.nconfigs_per_pot)
+          for j, det_ind in enumerate(inds_chosen):
+            ind = i*self.nconfigs_per_pot + j
+            config = system.configs[det_ind]
+            self.inputs[ind,0:system.nsites] = torch.from_numpy(V)
+            self.inputs[ind,system.nsites:] = torch.from_numpy(config)
       elif self.input_type == 'potential_and_occ_str':
         if self.all_configs:
           for j in range(system.ndets):
@@ -237,7 +239,9 @@ class Data(Dataset):
             ind = i*system.ndets + j
             self.labels[ind,0] = wf.coeffs[j,0] / np.sign(wf.coeffs[0,0])
         else:
-          self.labels[i,0] = wf.coeffs[det_chosen,0] / np.sign(wf.coeffs[0,0])
+          for j, det_ind in enumerate(inds_chosen):
+            ind = i*self.nconfigs_per_pot + j
+            self.labels[ind,0] = wf.coeffs[det_ind,0] / np.sign(wf.coeffs[0,0])
 
     t2 = time.perf_counter()
 
