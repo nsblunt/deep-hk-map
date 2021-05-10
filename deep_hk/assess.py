@@ -127,7 +127,7 @@ def print_data_comparison(
         float(outputs[data_label][i])
     ))
 
-def assess_predicted_energies(
+def assess_predicted_energies_from_wf(
     net,
     data,
     criterion,
@@ -163,6 +163,61 @@ def assess_predicted_energies(
     print('{:15d}   {: .8e}   {: .8e}'.format(
         i,
         energy,
+        energy_exact,
+    ))
+
+  loss = criterion(e_predicted, e_target)
+  print('Total loss: {:.8f}\n'.format(loss))
+
+def assess_predicted_energies_from_coeffs(
+    net,
+    data,
+    criterion,
+    device=torch.device('cpu')):
+  """For a network that predicts individual wave function
+     coefficients as its output, this function uses this output to
+     calculate the variational energy estimator, and compares these
+     predicted energies to exact values.
+
+  Args
+  ----
+  net : network object
+    A network which outputs wave function coefficients.
+  data : Data object
+    The data that will be used in the comparison.
+  criterion : torch criterion object
+    A loss function object, to compare the predicted and exact energies.
+  """
+  system = data.system
+
+  e_predicted = torch.zeros(data.ndata)
+  e_target = torch.FloatTensor(data.energies)
+
+  system.generate_configs()
+
+  for ind, potential in enumerate(data.potentials):
+    inp = torch.zeros(system.ndets, data.ninput, dtype=torch.float)
+
+    for i, config in enumerate(system.configs):
+      inp[i,0:system.nsites] = torch.from_numpy(potential)
+      inp[i,system.nsites:] = torch.from_numpy(config)
+
+    inputs = inp.to(device)
+    wf_predicted = net(inputs)
+    # Convert to 1D array
+    wf_predicted = wf_predicted[:,0]
+
+    wf_numpy = wf_predicted.detach().numpy()
+    energy = system.calc_energy(wf_numpy, potential)
+
+    e_predicted[ind] = energy
+
+  for i, energy_predicted, energy_exact in zip(count(), e_predicted,
+      data.energies):
+
+    print('{:15d}   {: .8e}   {: .8e}'.format(
+        i,
+        energy_predicted,
         energy_exact,
     ))
 
