@@ -86,6 +86,15 @@ class Data(Dataset):
     # configurations contributing to each wave function.
     self.ndata_per_potential = 1
 
+    self.coeff_out = False
+    if output_type == 'coeff':
+      self.coeff_out = True
+      # Do we use all configurations as data points, or a sample?
+      if all_configs:
+        self.ndata_per_potential = system.ndets
+      else:
+        self.ndata_per_potential = nconfigs_per_pot
+
     self.all_configs = all_configs
     self.nconfigs_per_pot = nconfigs_per_pot
 
@@ -95,16 +104,10 @@ class Data(Dataset):
       self.ninput = system.nsites**2
     elif input_type == 'potential_and_config':
       self.ninput = system.nsites + system.norbs
-      if all_configs:
-        self.ndata_per_potential = system.ndets
-      else:
-        self.ndata_per_potential = nconfigs_per_pot
     elif input_type == 'potential_and_occ_str':
       self.ninput = system.nsites + system.nparticles
-      self.ndata_per_potential = system.ndets
     elif input_type == 'potential_and_det_ind':
       self.ninput = system.nsites + 1
-      self.ndata_per_potential = system.ndets
 
     self.ndata_tot = self.ndata * self.ndata_per_potential
 
@@ -156,11 +159,10 @@ class Data(Dataset):
     self.labels = torch.zeros(self.ndata_tot, self.noutput, dtype=torch.float)
     self.potentials = []
     self.energies = []
-    det_ind = None
 
     # Generate the configurations from the determinants stored,
     # which will be the same every for every potential applied.
-    if self.input_type == 'potential_and_config':
+    if 'config' in self.input_type:
       system.generate_configs()
 
     t1 = time.perf_counter()
@@ -190,33 +192,34 @@ class Data(Dataset):
       elif self.input_type == '1-rdm':
         wf.calc_rdm1_gs()
         self.inputs[i,:] = torch.from_numpy(wf.rdm1_gs.flatten())
-      elif self.input_type == 'potential_and_config':
+      elif self.coeff_out:
+        # If outputting a wave function coefficient
+        if 'potential' in self.input_type:
+          inp_array = torch.from_numpy(V)
+          inp_length = system.nsites
+        if 'density' in self.input_type:
+          inp_array = torch.from_numpy(wf.density_gs)
+          inp_length = system.nsites
+        if '1-rdm' in self.input_type:
+          inp_array = torch.from_numpy(wf.rdm1_gs.flatten())
+          inp_length = system.nsites**2
+
+        # Generate the indices of the determinants to be used
         if self.all_configs:
-          for j in range(system.ndets):
-            ind = i*system.ndets + j
-            config = system.configs[j]
-            self.inputs[ind,0:system.nsites] = torch.from_numpy(V)
-            self.inputs[ind,system.nsites:] = torch.from_numpy(config)
+          det_inds = list(range(self.nconfigs_per_pot))
         else:
-          inds_chosen = wf.select_random_configs(self.nconfigs_per_pot)
-          for j, det_ind in enumerate(inds_chosen):
-            ind = i*self.nconfigs_per_pot + j
+          det_inds = wf.select_random_configs(self.nconfigs_per_pot)
+
+        for j, det_ind in enumerate(det_inds):
+          ind = i*self.nconfigs_per_pot + j
+          self.inputs[ind,0:inp_length] = inp_array
+          if 'config' in self.input_type:
             config = system.configs[det_ind]
-            self.inputs[ind,0:system.nsites] = torch.from_numpy(V)
-            self.inputs[ind,system.nsites:] = torch.from_numpy(config)
-      elif self.input_type == 'potential_and_occ_str':
-        if self.all_configs:
-          for j in range(system.ndets):
-            ind = i*system.ndets + j
-            det = torch.from_numpy(np.asarray(system.dets[j]))
-            self.inputs[ind,0:system.nsites] = torch.from_numpy(V)
-            self.inputs[ind,system.nsites:] = det
-      elif self.input_type == 'potential_and_det_ind':
-        if self.all_configs:
-          for j in range(system.ndets):
-            ind = i*system.ndets + j
-            self.inputs[ind,0:system.nsites] = torch.from_numpy(V)
-            self.inputs[ind,system.nsites:] = j
+            self.inputs[ind,inp_length:] = torch.from_numpy(config)
+          elif 'occ_str' in self.input_type:
+            self.inputs[ind,inp_length:] = torch.from_numpy(np.asarray(system.dets[det_ind]))
+          elif 'det_ind' in self.input_type:
+            self.inputs[ind,inp_length:] = det_ind
 
       if self.output_type == 'energy':
         self.labels[i,:] = wf.energies[0]
@@ -234,14 +237,9 @@ class Data(Dataset):
         wf.calc_corr_fn_gs()
         self.labels[i,:] = torch.from_numpy(wf.corr_fn_gs.flatten())
       elif self.output_type == 'coeff':
-        if self.all_configs:
-          for j in range(system.ndets):
-            ind = i*system.ndets + j
-            self.labels[ind,0] = wf.coeffs[j,0] / np.sign(wf.coeffs[0,0])
-        else:
-          for j, det_ind in enumerate(inds_chosen):
-            ind = i*self.nconfigs_per_pot + j
-            self.labels[ind,0] = wf.coeffs[det_ind,0] / np.sign(wf.coeffs[0,0])
+        for j, det_ind in enumerate(det_inds):
+          ind = i*self.nconfigs_per_pot + j
+          self.labels[ind,0] = wf.coeffs[det_ind,0] / np.sign(wf.coeffs[0,0])
 
     t2 = time.perf_counter()
 
