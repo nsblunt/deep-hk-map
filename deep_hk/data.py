@@ -198,9 +198,11 @@ class Data(Dataset):
           inp_array = torch.from_numpy(V)
           inp_length = system.nsites
         if 'density' in self.input_type:
+          wf.calc_gs_density()
           inp_array = torch.from_numpy(wf.density_gs)
           inp_length = system.nsites
         if '1-rdm' in self.input_type:
+          wf.calc_rdm1_gs()
           inp_array = torch.from_numpy(wf.rdm1_gs.flatten())
           inp_length = system.nsites**2
 
