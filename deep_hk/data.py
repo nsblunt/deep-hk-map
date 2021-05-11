@@ -84,19 +84,18 @@ class Data(Dataset):
     # This is usually 1, but will be larger if passing in each
     # configuration to the network also, as there are many
     # configurations contributing to each wave function.
-    self.ndata_per_potential = 1
+    self.nconfigs_per_pot = 1
+
+    self.all_configs = all_configs
 
     self.coeff_out = False
     if output_type == 'coeff':
       self.coeff_out = True
       # Do we use all configurations as data points, or a sample?
       if all_configs:
-        self.ndata_per_potential = system.ndets
+        self.nconfigs_per_pot = system.ndets
       else:
-        self.ndata_per_potential = nconfigs_per_pot
-
-    self.all_configs = all_configs
-    self.nconfigs_per_pot = nconfigs_per_pot
+        self.nconfigs_per_pot = nconfigs_per_pot
 
     if input_type == 'potential' or input_type == 'density':
       self.ninput = system.nsites
@@ -109,7 +108,7 @@ class Data(Dataset):
     elif input_type == 'potential_and_det_ind':
       self.ninput = system.nsites + 1
 
-    self.ndata_tot = self.ndata * self.ndata_per_potential
+    self.ndata_tot = self.ndata * self.nconfigs_per_pot
 
     if output_type == 'energy':
       self.noutput = 1
