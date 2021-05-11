@@ -97,18 +97,19 @@ class Data(Dataset):
       else:
         self.nconfigs_per_pot = nconfigs_per_pot
 
-    if input_type == 'potential' or input_type == 'density':
-      self.ninput = system.nsites
-    elif input_type == '1-rdm':
-      self.ninput = system.nsites**2
-    elif input_type == 'potential_and_config':
-      self.ninput = system.nsites + system.norbs
-    elif input_type == 'potential_and_occ_str':
-      self.ninput = system.nsites + system.nparticles
-    elif input_type == 'potential_and_det_ind':
-      self.ninput = system.nsites + 1
-
     self.ndata_tot = self.ndata * self.nconfigs_per_pot
+
+    if 'potential' in input_type or 'density' in input_type:
+      self.ninput = system.nsites
+    elif '1-rdm' in input_type:
+      self.ninput = system.nsites**2
+
+    if 'config' in input_type:
+      self.ninput += system.norbs
+    elif 'occ_str' in input_type:
+      self.ninput += system.nparticles
+    elif 'det_ind' in input_type:
+      self.ninput += 1
 
     if output_type == 'energy':
       self.noutput = 1
