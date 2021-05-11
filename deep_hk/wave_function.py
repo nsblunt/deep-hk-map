@@ -168,20 +168,13 @@ class WaveFunction:
       else:
         print('{:6d}  {}  {: .8e}'.format(i, occ_i, 0.0))
 
-  def select_random_config(self):
+  def select_single_random_config(self, cum_coeffs, cum_total):
 
-    # Generate list of cumulative squared coefficients
-    cum_coeffs = []
-    cum_value = 0.0
-    for coeff in self.coeffs[:,0]:
-      cum_value += coeff**2
-      cum_coeffs.append(cum_value)
-
-      rand = random.uniform(0.0, cum_value)
+    rand = random.uniform(0.0, cum_total)
 
     det_chosen_ind = None
-    for i, cum_value in enumerate(cum_coeffs):
-      if rand < cum_value:
+    for i, cum_total in enumerate(cum_coeffs):
+      if rand < cum_total:
         det_chosen_ind = i
         break
 
@@ -189,3 +182,25 @@ class WaveFunction:
       det_chosen_ind = self.ndets-1
 
     return det_chosen_ind
+
+  def select_random_configs(self, n):
+
+    # Generate list of cumulative squared coefficients
+    cum_coeffs = []
+    cum_total = 0.0
+    for coeff in self.coeffs[:,0]:
+      cum_total += coeff**2
+      cum_coeffs.append(cum_total)
+
+    inds_chosen = []
+
+    n_chosen = 0
+    while n_chosen < n:
+      new_ind = self.select_single_random_config(cum_coeffs, cum_total)
+      if new_ind not in inds_chosen:
+        inds_chosen.append(new_ind)
+        n_chosen += 1
+
+    assert n_chosen == n
+
+    return inds_chosen
