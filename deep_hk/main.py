@@ -46,6 +46,15 @@ flags.DEFINE_integer('ntrain', 12800, 'Number of training samples to '
 flags.DEFINE_integer('nvalidation', 0, 'Number of validation samples to '
     'generate.')
 flags.DEFINE_integer('ntest', 100, 'Number of test samples to generate.')
+
+# Define the number of configurations to use per potential, when
+# learning individual wave function coefficients.
+flags.DEFINE_boolean('all_configs', True, 'If true, use every '
+    'configuration as a data point, when learning individual coefficients.')
+flags.DEFINE_integer('nconfigs_per_pot', 1, 'Number of configurations to '
+    'sample for each potential. Each configuration and potential is used '
+    'as a data point for the data set.')
+
 flags.DEFINE_boolean('load_train_data_csv', False, 'If true, read the '
     'training data from a CSV file, instead of generating it.')
 flags.DEFINE_boolean('load_valid_data_csv', False, 'If true, read the '
@@ -162,6 +171,8 @@ def main(argv):
       ndata=FLAGS.ntrain,
       input_type=FLAGS.input_type,
       output_type=FLAGS.output_type,
+      all_configs=FLAGS.all_configs,
+      nconfigs_per_pot=FLAGS.nconfigs_per_pot,
       load=FLAGS.load_train_data_csv,
       save=FLAGS.save_train_data_csv,
       path='data_train.csv',
@@ -174,6 +185,8 @@ def main(argv):
         ndata=FLAGS.nvalidation,
         input_type=FLAGS.input_type,
         output_type=FLAGS.output_type,
+        all_configs=FLAGS.all_configs,
+        nconfigs_per_pot=FLAGS.nconfigs_per_pot,
         load=FLAGS.load_valid_data_csv,
         save=FLAGS.save_valid_data_csv,
         path='data_valid.csv',
@@ -189,6 +202,8 @@ def main(argv):
       ndata=FLAGS.ntest,
       input_type=FLAGS.input_type,
       output_type=FLAGS.output_type,
+      all_configs=FLAGS.all_configs,
+      nconfigs_per_pot=FLAGS.nconfigs_per_pot,
       load=FLAGS.load_test_data_csv,
       save=FLAGS.save_test_data_csv,
       path='data_test.csv',
