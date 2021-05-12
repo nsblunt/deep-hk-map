@@ -199,14 +199,45 @@ def assess_predicted_energies_from_coeffs(
   e_predicted = torch.zeros(data.ndata)
   e_target = torch.FloatTensor(data.energies)
 
-  system.generate_configs()
+  if 'potential' in data.input_type:
+    system.generate_configs()
 
   for ind, potential in enumerate(data.potentials):
+
     inp = torch.zeros(system.ndets, data.ninput, dtype=torch.float)
 
-    for i, config in enumerate(system.configs):
-      inp[i,0:system.nsites] = torch.from_numpy(potential)
-      inp[i,system.nsites:] = torch.from_numpy(config)
+    if 'density' in data.input_type or '1-rdm' in data.input_type:
+      # Find exact wave function
+      system.add_potential_to_hamil(potential)
+      wf_exact = WaveFunction(
+          nsites=system.nsites,
+          nspin=system.nspin,
+          dets=system.dets)
+
+      wf_exact.solve_eigenvalue(system.hamil)
+
+    if 'potential' in data.input_type:
+      inp_array = torch.from_numpy(potential)
+      inp_length = system.nsites
+    if 'density' in data.input_type:
+      wf_exact.calc_gs_density()
+      inp_array = torch.from_numpy(wf_exact.density_gs)
+      inp_length = system.nsites
+    if '1-rdm' in data.input_type:
+      wf_exact.calc_rdm1_gs()
+      inp_array = torch.from_numpy(wf_exact.rdm1_gs.flatten())
+      inp_length = system.nsites**2
+
+    for i in range(system.ndets):
+      inp[i,0:inp_length] = inp_array
+
+      if 'config' in data.input_type:
+        config = system.configs[i]
+        inp[i,inp_length:] = torch.from_numpy(config)
+      elif 'occ_str' in data.input_type:
+        inp[i,inp_length:] = torch.from_numpy(np.asarray(system.dets[i]))
+      elif 'det_ind' in data.input_type:
+        inp[i,inp_length:] = i
 
     inputs = inp.to(device)
     wf_predicted = net(inputs)
@@ -252,23 +283,10 @@ def calc_infidelities_from_coeffs(
 
   infs = np.zeros(data.ndata)
 
-  system.generate_configs()
+  if 'potential' in data.input_type:
+    system.generate_configs()
 
   for ind, potential in enumerate(data.potentials):
-    # Find predicted wave function
-    inp = torch.zeros(system.ndets, data.ninput, dtype=torch.float)
-    for i, config in enumerate(system.configs):
-      inp[i,0:system.nsites] = torch.from_numpy(potential)
-      inp[i,system.nsites:] = torch.from_numpy(config)
-
-    inputs = inp.to(device)
-    wf_predicted = net(inputs)
-    # Convert to 1D array
-    wf_predicted = wf_predicted[:,0]
-
-    wf_pred = wf_predicted.detach().numpy()
-    wf_norm = np.linalg.norm(wf_pred, ord=2)
-    wf_pred /= wf_norm
 
     # Find exact wave function
     system.add_potential_to_hamil(potential)
@@ -279,6 +297,42 @@ def calc_infidelities_from_coeffs(
         dets=system.dets)
 
     wf_exact.solve_eigenvalue(system.hamil)
+
+    # Find the predicted wave function
+    inp = torch.zeros(system.ndets, data.ninput, dtype=torch.float)
+
+    # Generate the array to be input into the network
+    if 'potential' in data.input_type:
+      inp_array = torch.from_numpy(potential)
+      inp_length = system.nsites
+    if 'density' in data.input_type:
+      wf_exact.calc_gs_density()
+      inp_array = torch.from_numpy(wf_exact.density_gs)
+      inp_length = system.nsites
+    if '1-rdm' in data.input_type:
+      wf_exact.calc_rdm1_gs()
+      inp_array = torch.from_numpy(wf_exact.rdm1_gs.flatten())
+      inp_length = system.nsites**2
+
+    for i in range(system.ndets):
+      inp[i,0:inp_length] = inp_array
+
+      if 'config' in data.input_type:
+        config = system.configs[i]
+        inp[i,inp_length:] = torch.from_numpy(config)
+      elif 'occ_str' in data.input_type:
+        inp[i,inp_length:] = torch.from_numpy(np.asarray(system.dets[i]))
+      elif 'det_ind' in data.input_type:
+        inp[i,inp_length:] = i
+
+    inputs = inp.to(device)
+    wf_predicted = net(inputs)
+    # Convert to 1D array
+    wf_predicted = wf_predicted[:,0]
+
+    wf_pred = wf_predicted.detach().numpy()
+    wf_norm = np.linalg.norm(wf_pred, ord=2)
+    wf_pred /= wf_norm
 
     infs[ind] = 1 - np.abs(np.dot(wf_pred, wf_exact.coeffs[:,0]))
 
