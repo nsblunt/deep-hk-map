@@ -41,11 +41,11 @@ flags.DEFINE_float('potential_sum_val', 0.0, 'If const_potential_sum is '
     'true, then this is the value of potential summed over all sites.')
 
 # Define the parameters for data (training, validation, test).
-flags.DEFINE_integer('ntrain', 12800, 'Number of training samples to '
+flags.DEFINE_integer('ntrain', 12800, 'Number of training potentials to '
     'generate.')
-flags.DEFINE_integer('nvalidation', 0, 'Number of validation samples to '
+flags.DEFINE_integer('nvalidation', 0, 'Number of validation potentials to '
     'generate.')
-flags.DEFINE_integer('ntest', 100, 'Number of test samples to generate.')
+flags.DEFINE_integer('ntest', 100, 'Number of test potentials to generate.')
 
 # Define the number of configurations to use per potential, when
 # learning individual wave function coefficients.
@@ -168,7 +168,7 @@ def main(argv):
   # Create the data sets.
   data_train = data.Data(
       system=system,
-      ndata=FLAGS.ntrain,
+      npot=FLAGS.ntrain,
       input_type=FLAGS.input_type,
       output_type=FLAGS.output_type,
       all_configs=FLAGS.all_configs,
@@ -182,7 +182,7 @@ def main(argv):
   if FLAGS.nvalidation > 0:
     data_valid = data.Data(
         system=system,
-        ndata=FLAGS.nvalidation,
+        npot=FLAGS.nvalidation,
         input_type=FLAGS.input_type,
         output_type=FLAGS.output_type,
         all_configs=FLAGS.all_configs,
@@ -199,7 +199,7 @@ def main(argv):
 
   data_test = data.Data(
       system=system,
-      ndata=FLAGS.ntest,
+      npot=FLAGS.ntest,
       input_type=FLAGS.input_type,
       output_type=FLAGS.output_type,
       all_configs=FLAGS.all_configs,

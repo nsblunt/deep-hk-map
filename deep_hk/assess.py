@@ -196,7 +196,7 @@ def assess_predicted_energies_from_coeffs(
   """
   system = data.system
 
-  e_predicted = torch.zeros(data.ndata)
+  e_predicted = torch.zeros(data.npot)
   e_target = torch.FloatTensor(data.energies)
 
   if 'potential' in data.input_type:
@@ -281,7 +281,7 @@ def calc_infidelities_from_coeffs(
   """
   system = data.system
 
-  infs = np.zeros(data.ndata)
+  infs = np.zeros(data.npot)
 
   if 'potential' in data.input_type:
     system.generate_configs()

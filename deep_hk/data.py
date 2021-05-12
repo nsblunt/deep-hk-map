@@ -14,7 +14,7 @@ class Data(Dataset):
 
   def __init__(self,
                system,
-               ndata,
+               npot,
                input_type='potential',
                output_type='energy',
                all_configs=True,
@@ -31,12 +31,20 @@ class Data(Dataset):
     ----
     system : SpinlessHubbard object
       The definition of the lattice model used.
-    ndata : int
+    npot : int
       The number of potentials to be read or generated.
     input_type : string
       String specifying what object is passed into the network.
     output_type : string
       String specifying what object is passed out of the network.
+    all_configs : bool
+      When predicting individual coefficients as output, if True
+      then every configuration is used as a data point for each
+      potential. If False then a random selection is taken.
+    nconfigs_per_pot : int
+      When predicting individual coefficients as output, if all_configs
+      is False then this specifies how many random configurations to
+      use for each potential generated.
     load : bool
       If True, then the data is read from a file.
     save : bool
@@ -54,6 +62,11 @@ class Data(Dataset):
 
     Other attributes
     ----------------
+    ndata_tot : int
+      The total number of data points in the data set. Usually this is
+      just equal to npot. The exception is where we are predicting
+      individual wave function coefficients, in which case we may have
+      multiple configurations as data points per potential.
     ninput : int
       The number of values passed into the network (for each data point).
     noutput : int
@@ -69,7 +82,7 @@ class Data(Dataset):
     """
 
     self.system = system
-    self.ndata = ndata
+    self.npot = npot
     self.input_type = input_type
     self.output_type = output_type
 
@@ -97,7 +110,7 @@ class Data(Dataset):
       else:
         self.nconfigs_per_pot = nconfigs_per_pot
 
-    self.ndata_tot = self.ndata * self.nconfigs_per_pot
+    self.ndata_tot = self.npot * self.nconfigs_per_pot
 
     if 'potential' in input_type or 'density' in input_type:
       self.ninput = system.nsites
@@ -167,7 +180,7 @@ class Data(Dataset):
 
     t1 = time.perf_counter()
 
-    for i in range(self.ndata):
+    for i in range(self.npot):
       V = system.gen_rand_potential(
           const_potential_sum,
           potential_sum_val)

@@ -168,7 +168,16 @@ class WaveFunction:
       else:
         print('{:6d}  {}  {: .8e}'.format(i, occ_i, 0.0))
 
-  def select_single_random_config(self, cum_coeffs, cum_total):
+  def select_single_random_config(self, cum_coeffs):
+    """Choose a random configuration from the distribution defined
+       by cum_coeffs.
+
+    Args
+    ----
+    cum_coeffs : list of floats
+      The cumulative values of the wave function amplitudes squared.
+    """
+    cum_total = cum_coeffs[-1]
 
     rand = random.uniform(0.0, cum_total)
 
@@ -184,6 +193,18 @@ class WaveFunction:
     return det_chosen_ind
 
   def select_random_configs(self, n):
+    """Select n configurations from the distribution of wave function
+       amplitudes squared.
+
+    Args
+    ----
+    n : int
+      The number of unique configurations to be selected.
+    """
+
+    if n > self.ndets:
+      raise ValueError('Number of unique configurations requested is '
+          'larger than the total number of configurations.')
 
     # Generate list of cumulative squared coefficients
     cum_coeffs = []
@@ -196,7 +217,7 @@ class WaveFunction:
 
     n_chosen = 0
     while n_chosen < n:
-      new_ind = self.select_single_random_config(cum_coeffs, cum_total)
+      new_ind = self.select_single_random_config(cum_coeffs)
       if new_ind not in inds_chosen:
         inds_chosen.append(new_ind)
         n_chosen += 1
