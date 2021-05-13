@@ -1,6 +1,8 @@
 """Functions to assess the accuracy of a previously trained model."""
 
+from deep_hk.wave_function import WaveFunction
 import torch
+import numpy as np
 from itertools import count
 
 def print_net_accuracy(
@@ -127,7 +129,7 @@ def print_data_comparison(
         float(outputs[data_label][i])
     ))
 
-def assess_predicted_energies(
+def assess_predicted_energies_from_wf(
     net,
     data,
     criterion,
@@ -144,10 +146,12 @@ def assess_predicted_energies(
     The data that will be used in the comparison.
   criterion : torch criterion object
     A loss function object, to compare the predicted and exact energies.
+  device : torch.device object
+    Specifies whether we are using a CPU or GPU for training.
   """
   inputs = data.inputs.to(device)
   wf_predicted = net(inputs)
-  e_predicted = torch.zeros(data.ndata)
+  e_predicted = torch.zeros(data.ndata_tot)
 
   e_target = torch.FloatTensor(data.energies)
 
@@ -167,4 +171,177 @@ def assess_predicted_energies(
     ))
 
   loss = criterion(e_predicted, e_target)
-  print('Total loss: {:.8f}\n'.format(loss))
+  print('Total loss in energy: {:.8f}\n'.format(loss))
+
+def assess_predicted_energies_from_coeffs(
+    net,
+    data,
+    criterion,
+    device=torch.device('cpu')):
+  """For a network that predicts individual wave function
+     coefficients as its output, this function uses this output to
+     calculate the variational energy estimator, and compares these
+     predicted energies to exact values.
+
+  Args
+  ----
+  net : network object
+    A network which outputs wave function coefficients.
+  data : Data object
+    The data that will be used in the comparison.
+  criterion : torch criterion object
+    A loss function object, to compare the predicted and exact energies.
+  device : torch.device object
+    Specifies whether we are using a CPU or GPU for training.
+  """
+  system = data.system
+
+  e_predicted = torch.zeros(data.npot)
+  e_target = torch.FloatTensor(data.energies)
+
+  if 'potential' in data.input_type:
+    system.generate_configs()
+
+  for ind, potential in enumerate(data.potentials):
+
+    inp = torch.zeros(system.ndets, data.ninput, dtype=torch.float)
+
+    if 'density' in data.input_type or '1-rdm' in data.input_type:
+      # Find exact wave function
+      system.add_potential_to_hamil(potential)
+      wf_exact = WaveFunction(
+          nsites=system.nsites,
+          nspin=system.nspin,
+          dets=system.dets)
+
+      wf_exact.solve_eigenvalue(system.hamil)
+
+    if 'potential' in data.input_type:
+      inp_array = torch.from_numpy(potential)
+      inp_length = system.nsites
+    if 'density' in data.input_type:
+      wf_exact.calc_gs_density()
+      inp_array = torch.from_numpy(wf_exact.density_gs)
+      inp_length = system.nsites
+    if '1-rdm' in data.input_type:
+      wf_exact.calc_rdm1_gs()
+      inp_array = torch.from_numpy(wf_exact.rdm1_gs.flatten())
+      inp_length = system.nsites**2
+
+    for i in range(system.ndets):
+      inp[i,0:inp_length] = inp_array
+
+      if 'config' in data.input_type:
+        config = system.configs[i]
+        inp[i,inp_length:] = torch.from_numpy(config)
+      elif 'occ_str' in data.input_type:
+        inp[i,inp_length:] = torch.from_numpy(np.asarray(system.dets[i]))
+      elif 'det_ind' in data.input_type:
+        inp[i,inp_length:] = i
+
+    inputs = inp.to(device)
+    wf_predicted = net(inputs)
+    # Convert to 1D array
+    wf_predicted = wf_predicted[:,0]
+
+    wf_numpy = wf_predicted.detach().numpy()
+    energy = system.calc_energy(wf_numpy, potential)
+
+    e_predicted[ind] = energy
+
+  for i, energy_predicted, energy_exact in zip(count(), e_predicted,
+      data.energies):
+
+    print('{:15d}   {: .8e}   {: .8e}'.format(
+        i,
+        energy_predicted,
+        energy_exact,
+    ))
+
+  loss = criterion(e_predicted, e_target)
+  print('Total loss in energy: {:.8f}\n'.format(loss))
+
+def calc_infidelities_from_coeffs(
+    net,
+    data,
+    device=torch.device('cpu')):
+  """For a network that predicts individual wave function
+     coefficients as its output, this function uses this output to
+     calculate the infidelity of the wave function relative to
+     the exact result.
+
+  Args
+  ----
+  net : network object
+    A network which outputs wave function coefficients.
+  data : Data object
+    The data that will be used in the comparison.
+  device : torch.device object
+    Specifies whether we are using a CPU or GPU for training.
+  """
+  system = data.system
+
+  infs = np.zeros(data.npot)
+
+  if 'potential' in data.input_type:
+    system.generate_configs()
+
+  for ind, potential in enumerate(data.potentials):
+
+    # Find exact wave function
+    system.add_potential_to_hamil(potential)
+
+    wf_exact = WaveFunction(
+        nsites=system.nsites,
+        nspin=system.nspin,
+        dets=system.dets)
+
+    wf_exact.solve_eigenvalue(system.hamil)
+
+    # Find the predicted wave function
+    inp = torch.zeros(system.ndets, data.ninput, dtype=torch.float)
+
+    # Generate the array to be input into the network
+    if 'potential' in data.input_type:
+      inp_array = torch.from_numpy(potential)
+      inp_length = system.nsites
+    if 'density' in data.input_type:
+      wf_exact.calc_gs_density()
+      inp_array = torch.from_numpy(wf_exact.density_gs)
+      inp_length = system.nsites
+    if '1-rdm' in data.input_type:
+      wf_exact.calc_rdm1_gs()
+      inp_array = torch.from_numpy(wf_exact.rdm1_gs.flatten())
+      inp_length = system.nsites**2
+
+    for i in range(system.ndets):
+      inp[i,0:inp_length] = inp_array
+
+      if 'config' in data.input_type:
+        config = system.configs[i]
+        inp[i,inp_length:] = torch.from_numpy(config)
+      elif 'occ_str' in data.input_type:
+        inp[i,inp_length:] = torch.from_numpy(np.asarray(system.dets[i]))
+      elif 'det_ind' in data.input_type:
+        inp[i,inp_length:] = i
+
+    inputs = inp.to(device)
+    wf_predicted = net(inputs)
+    # Convert to 1D array
+    wf_predicted = wf_predicted[:,0]
+
+    wf_pred = wf_predicted.detach().numpy()
+    wf_norm = np.linalg.norm(wf_pred, ord=2)
+    wf_pred /= wf_norm
+
+    infs[ind] = 1 - np.abs(np.dot(wf_pred, wf_exact.coeffs[:,0]))
+
+  for i, inf in zip(count(), infs):
+
+    print('{:15d}   {: .8e}'.format(
+        i,
+        inf,
+    ))
+
+  mean_inf = np.mean(infs)
+  print('Mean infidelity: {:.8f}\n'.format(mean_inf))

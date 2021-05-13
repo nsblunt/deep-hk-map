@@ -7,7 +7,7 @@ import torch.optim as optim
 
 nepochs = 300
 batch_size = 128
-ndata_train = 3200
+npot_train = 3200
 
 torch.manual_seed(7)
 
@@ -29,7 +29,7 @@ print('Generating the training data. May take several minutes...', flush=True)
 
 data_train = data.Data(
     system=system,
-    ndata=ndata_train,
+    npot=npot_train,
     input_type='density',
     output_type='wave_function',
     load=False,
@@ -70,10 +70,10 @@ train.train(
 
 print('Generating the test data. May take several minutes...', flush=True)
 
-ndata_test = 1280
+npot_test = 1280
 data_test = data.Data(
     system=system,
-    ndata=ndata_test,
+    npot=npot_test,
     input_type='density',
     output_type='wave_function',
     load=False,
@@ -101,9 +101,9 @@ plt.show()
 
 # Plot the distribution of loss values for the test data
 losses = []
-for i in range(ndata_test):
+for i in range(npot_test):
   loss_test = criterion(outputs[i:i+1,:], data_test.labels[i:i+1,:])
-  losses.append(loss_test.detach())
+  losses.append(loss_test.detach().item())
 
 bins = np.linspace(0, max(losses), 30)
 plt.xlim([0, max(losses)])

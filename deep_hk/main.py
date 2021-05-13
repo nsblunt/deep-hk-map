@@ -41,11 +41,20 @@ flags.DEFINE_float('potential_sum_val', 0.0, 'If const_potential_sum is '
     'true, then this is the value of potential summed over all sites.')
 
 # Define the parameters for data (training, validation, test).
-flags.DEFINE_integer('ntrain', 12800, 'Number of training samples to '
+flags.DEFINE_integer('ntrain', 12800, 'Number of training potentials to '
     'generate.')
-flags.DEFINE_integer('nvalidation', 0, 'Number of validation samples to '
+flags.DEFINE_integer('nvalidation', 0, 'Number of validation potentials to '
     'generate.')
-flags.DEFINE_integer('ntest', 100, 'Number of test samples to generate.')
+flags.DEFINE_integer('ntest', 100, 'Number of test potentials to generate.')
+
+# Define the number of configurations to use per potential, when
+# learning individual wave function coefficients.
+flags.DEFINE_boolean('all_configs', True, 'If true, use every '
+    'configuration as a data point, when learning individual coefficients.')
+flags.DEFINE_integer('nconfigs_per_pot', 1, 'Number of configurations to '
+    'sample for each potential. Each configuration and potential is used '
+    'as a data point for the data set.')
+
 flags.DEFINE_boolean('load_train_data_csv', False, 'If true, read the '
     'training data from a CSV file, instead of generating it.')
 flags.DEFINE_boolean('load_valid_data_csv', False, 'If true, read the '
@@ -69,11 +78,14 @@ flags.DEFINE_float('lr', 0.001, 'The learning rate for the optimizer.')
 flags.DEFINE_enum('net_type', 'linear', ['linear', 'conv'], 'Specify which '
     'network type to use.')
 flags.DEFINE_enum(
-    'input_type', 'potential', ['potential', 'density', '1-rdm'], 'Specify '
-    'which object we pass into the network input.')
+    'input_type', 'potential', ['potential', 'density', '1-rdm',
+    'potential_and_config', 'potential_and_occ_str', 'potential_and_det_ind',
+    'density_and_config', 'density_and_occ_str', 'density_and_det_ind',
+    '1-rdm_and_config', '1-rdm_and_occ_str', '1-rdm_and_det_ind'],
+    'Specify which object we pass into the network input.')
 flags.DEFINE_enum('output_type', 'energy',
-    ['energy', 'wave_function', 'potential', 'density', '1-rdm', 'corr_fn'],
-    'Specify which object should be output by the network.')
+    ['energy', 'wave_function', 'potential', 'density', '1-rdm', 'corr_fn',
+    'coeff'], 'Specify which object should be output by the network.')
 flags.DEFINE_enum('activation_fn', 'relu',
     ['relu', 'elu', 'sigmoid', 'tanh'],
     'Define the activation function used.')
@@ -107,6 +119,10 @@ flags.DEFINE_string('load_path', './network.pt', 'Path and name for the '
 flags.DEFINE_boolean('assess_energy_from_wf', 'False', 'If predicting '
     'a wave function as output, then calculate and print the associated '
     'energies for the test data.')
+
+flags.DEFINE_boolean('assess_energy_from_coeffs', 'False', 'If predicting '
+    'individual wave function coefficients as the output, then calculate '
+    'and print the associated energies for the test data.')
 
 def main(argv):
   del argv
@@ -152,9 +168,11 @@ def main(argv):
   # Create the data sets.
   data_train = data.Data(
       system=system,
-      ndata=FLAGS.ntrain,
+      npot=FLAGS.ntrain,
       input_type=FLAGS.input_type,
       output_type=FLAGS.output_type,
+      all_configs=FLAGS.all_configs,
+      nconfigs_per_pot=FLAGS.nconfigs_per_pot,
       load=FLAGS.load_train_data_csv,
       save=FLAGS.save_train_data_csv,
       path='data_train.csv',
@@ -164,9 +182,11 @@ def main(argv):
   if FLAGS.nvalidation > 0:
     data_valid = data.Data(
         system=system,
-        ndata=FLAGS.nvalidation,
+        npot=FLAGS.nvalidation,
         input_type=FLAGS.input_type,
         output_type=FLAGS.output_type,
+        all_configs=FLAGS.all_configs,
+        nconfigs_per_pot=FLAGS.nconfigs_per_pot,
         load=FLAGS.load_valid_data_csv,
         save=FLAGS.save_valid_data_csv,
         path='data_valid.csv',
@@ -179,9 +199,11 @@ def main(argv):
 
   data_test = data.Data(
       system=system,
-      ndata=FLAGS.ntest,
+      npot=FLAGS.ntest,
       input_type=FLAGS.input_type,
       output_type=FLAGS.output_type,
+      all_configs=FLAGS.all_configs,
+      nconfigs_per_pot=FLAGS.nconfigs_per_pot,
       load=FLAGS.load_test_data_csv,
       save=FLAGS.save_test_data_csv,
       path='data_test.csv',
@@ -255,6 +277,23 @@ def main(argv):
       data_test,
       criterion,
       device=device)
+
+  assess.assess_predicted_energies_from_coeffs(
+      net,
+      data_test,
+      criterion,
+      device=device)
+
+  assess.calc_infidelities_from_coeffs(
+      net,
+      data_test,
+      device=device)
+
+  #assess.assess_predicted_energies_from_wf(
+  #    net,
+  #    data_test,
+  #    criterion=nn.L1Loss(),
+  #    device=device)
 
 if __name__ == '__main__':
   app.run(main)

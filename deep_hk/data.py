@@ -2,6 +2,7 @@
 
 from deep_hk.wave_function import WaveFunction
 from torch.utils.data import Dataset
+import numpy as np
 import torch
 import ast
 import csv
@@ -13,9 +14,11 @@ class Data(Dataset):
 
   def __init__(self,
                system,
-               ndata,
+               npot,
                input_type='potential',
                output_type='energy',
+               all_configs=True,
+               nconfigs_per_pot=1,
                load=False,
                save=True,
                path='data.csv',
@@ -28,12 +31,20 @@ class Data(Dataset):
     ----
     system : SpinlessHubbard object
       The definition of the lattice model used.
-    ndata : int
-      The number of data points to be read or generated.
+    npot : int
+      The number of potentials to be read or generated.
     input_type : string
       String specifying what object is passed into the network.
     output_type : string
       String specifying what object is passed out of the network.
+    all_configs : bool
+      When predicting individual coefficients as output, if True
+      then every configuration is used as a data point for each
+      potential. If False then a random selection is taken.
+    nconfigs_per_pot : int
+      When predicting individual coefficients as output, if all_configs
+      is False then this specifies how many random configurations to
+      use for each potential generated.
     load : bool
       If True, then the data is read from a file.
     save : bool
@@ -51,13 +62,18 @@ class Data(Dataset):
 
     Other attributes
     ----------------
+    ndata_tot : int
+      The total number of data points in the data set. Usually this is
+      just equal to npot. The exception is where we are predicting
+      individual wave function coefficients, in which case we may have
+      multiple configurations as data points per potential.
     ninput : int
       The number of values passed into the network (for each data point).
     noutput : int
       The number of values passed out of the network.
-    inputs : torch tensor of type torch.float and size (ndata, ninput)
+    inputs : torch tensor of type torch.float and size (ndata_tot, ninput)
       Tensor holding the input data points in its rows.
-    outputs : torch tensor of type torch.float and size (ndata, noutput)
+    outputs : torch tensor of type torch.float and size (ndata_tot, noutput)
       Tensor holding the predicted labels in its rows.
     potentials : list of numpy ndarrays, each of size (system.nsites)
       Holds the potentials applied to generate each data point.
@@ -66,7 +82,7 @@ class Data(Dataset):
     """
 
     self.system = system
-    self.ndata = ndata
+    self.npot = npot
     self.input_type = input_type
     self.output_type = output_type
 
@@ -77,10 +93,36 @@ class Data(Dataset):
 
     self.print_timing = print_timing
 
-    if input_type == 'potential' or input_type == 'density':
+    # The number of data points for each potential generated.
+    # This is usually 1, but will be larger if passing in each
+    # configuration to the network also, as there are many
+    # configurations contributing to each wave function.
+    self.nconfigs_per_pot = 1
+
+    self.all_configs = all_configs
+
+    self.coeff_out = False
+    if output_type == 'coeff':
+      self.coeff_out = True
+      # Do we use all configurations as data points, or a sample?
+      if all_configs:
+        self.nconfigs_per_pot = system.ndets
+      else:
+        self.nconfigs_per_pot = nconfigs_per_pot
+
+    self.ndata_tot = self.npot * self.nconfigs_per_pot
+
+    if 'potential' in input_type or 'density' in input_type:
       self.ninput = system.nsites
-    elif input_type == '1-rdm':
+    elif '1-rdm' in input_type:
       self.ninput = system.nsites**2
+
+    if 'config' in input_type:
+      self.ninput += system.norbs
+    elif 'occ_str' in input_type:
+      self.ninput += system.nparticles
+    elif 'det_ind' in input_type:
+      self.ninput += 1
 
     if output_type == 'energy':
       self.noutput = 1
@@ -92,6 +134,8 @@ class Data(Dataset):
       self.noutput = system.nsites**2
     elif output_type == 'corr_fn':
       self.noutput = system.nsites**2
+    elif output_type == 'coeff':
+      self.noutput = 1
 
     if load:
       self.load_csv(path)
@@ -124,14 +168,19 @@ class Data(Dataset):
       value that is enforced.
     """
     system = self.system
-    self.inputs = torch.zeros(self.ndata, self.ninput, dtype=torch.float)
-    self.labels = torch.zeros(self.ndata, self.noutput, dtype=torch.float)
+    self.inputs = torch.zeros(self.ndata_tot, self.ninput, dtype=torch.float)
+    self.labels = torch.zeros(self.ndata_tot, self.noutput, dtype=torch.float)
     self.potentials = []
     self.energies = []
 
+    # Generate the configurations from the determinants stored,
+    # which will be the same every for every potential applied.
+    if 'config' in self.input_type:
+      system.generate_configs()
+
     t1 = time.perf_counter()
 
-    for i in range(self.ndata):
+    for i in range(self.npot):
       V = system.gen_rand_potential(
           const_potential_sum,
           potential_sum_val)
@@ -156,6 +205,36 @@ class Data(Dataset):
       elif self.input_type == '1-rdm':
         wf.calc_rdm1_gs()
         self.inputs[i,:] = torch.from_numpy(wf.rdm1_gs.flatten())
+      elif self.coeff_out:
+        # If outputting a wave function coefficient
+        if 'potential' in self.input_type:
+          inp_array = torch.from_numpy(V)
+          inp_length = system.nsites
+        if 'density' in self.input_type:
+          wf.calc_gs_density()
+          inp_array = torch.from_numpy(wf.density_gs)
+          inp_length = system.nsites
+        if '1-rdm' in self.input_type:
+          wf.calc_rdm1_gs()
+          inp_array = torch.from_numpy(wf.rdm1_gs.flatten())
+          inp_length = system.nsites**2
+
+        # Generate the indices of the determinants to be used
+        if self.all_configs:
+          det_inds = list(range(self.nconfigs_per_pot))
+        else:
+          det_inds = wf.select_random_configs(self.nconfigs_per_pot)
+
+        for j, det_ind in enumerate(det_inds):
+          ind = i*self.nconfigs_per_pot + j
+          self.inputs[ind,0:inp_length] = inp_array
+          if 'config' in self.input_type:
+            config = system.configs[det_ind]
+            self.inputs[ind,inp_length:] = torch.from_numpy(config)
+          elif 'occ_str' in self.input_type:
+            self.inputs[ind,inp_length:] = torch.from_numpy(np.asarray(system.dets[det_ind]))
+          elif 'det_ind' in self.input_type:
+            self.inputs[ind,inp_length:] = det_ind
 
       if self.output_type == 'energy':
         self.labels[i,:] = wf.energies[0]
@@ -172,6 +251,10 @@ class Data(Dataset):
       elif self.output_type == 'corr_fn':
         wf.calc_corr_fn_gs()
         self.labels[i,:] = torch.from_numpy(wf.corr_fn_gs.flatten())
+      elif self.output_type == 'coeff':
+        for j, det_ind in enumerate(det_inds):
+          ind = i*self.nconfigs_per_pot + j
+          self.labels[ind,0] = wf.coeffs[det_ind,0] / np.sign(wf.coeffs[0,0])
 
     t2 = time.perf_counter()
 
@@ -200,8 +283,8 @@ class Data(Dataset):
     filename : string
       The name of the file where data will be loaded from.
     """
-    self.inputs = torch.zeros(self.ndata, self.ninput, dtype=torch.float)
-    self.labels = torch.zeros(self.ndata, self.noutput, dtype=torch.float)
+    self.inputs = torch.zeros(self.ndata_tot, self.ninput, dtype=torch.float)
+    self.labels = torch.zeros(self.ndata_tot, self.noutput, dtype=torch.float)
     with open(filename, 'r', newline='') as csv_file:
       reader = csv.reader(csv_file)
       # skip the header:
@@ -218,12 +301,12 @@ class MultipleDatasets(Data):
   def __init__(self, datasets):
     self.datasets = datasets
     self.ndatasets = len(datasets)
-    self.ndata = sum(len(d) for d in self.datasets)
+    self.ndata_tot = sum(len(d) for d in self.datasets)
 
     # Displacements of each data set within the full list
     self.displs = [0] * self.ndatasets
     for i in range(1, self.ndatasets):
-      self.displs[i] = self.displs[i-1] + self.datasets[i-1].ndata
+      self.displs[i] = self.displs[i-1] + self.datasets[i-1].ndata_tot
 
     # Dictionary used to define the ordering of data from the
     # various datasets.
@@ -234,7 +317,7 @@ class MultipleDatasets(Data):
 
   def __len__(self):
     """Return the number of data points."""
-    return self.ndata
+    return self.ndata_tot
 
   def __getitem__(self, index):
     """Return the input labelled by index, and the associated label."""
@@ -244,9 +327,9 @@ class MultipleDatasets(Data):
 
   def create_random_ordering(self):
     indices = {}
-    data_inds = [i for i in range(self.ndata)]
+    data_inds = [i for i in range(self.ndata_tot)]
     random.shuffle(data_inds)
-    for i in range(self.ndata):
+    for i in range(self.ndata_tot):
       n = data_inds[i]
       set_ind = find_pos(n, self.displs)
       data_ind = n - self.displs[set_ind]

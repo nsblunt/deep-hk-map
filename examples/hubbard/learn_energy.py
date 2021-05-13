@@ -5,7 +5,7 @@ import torch.optim as optim
 
 nepochs = 20
 batch_size = 128
-ndata_train = 12800
+npot_train = 12800
 
 torch.manual_seed(7)
 
@@ -26,7 +26,7 @@ system.construct()
 # Generate training data
 data_train = data.Data(
     system=system,
-    ndata=ndata_train,
+    npot=npot_train,
     input_type='1-rdm',
     output_type='energy',
     load=False,

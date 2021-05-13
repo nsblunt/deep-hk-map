@@ -4,6 +4,7 @@
 import numpy as np
 from scipy.sparse.linalg import eigsh
 from itertools import count
+import random
 
 class WaveFunction:
   """Class to store wave functions and calculate properties."""
@@ -166,3 +167,61 @@ class WaveFunction:
         print('{:6d}  {}  {: .8e}'.format(i, occ_i, coeff_i))
       else:
         print('{:6d}  {}  {: .8e}'.format(i, occ_i, 0.0))
+
+  def select_single_random_config(self, cum_coeffs):
+    """Choose a random configuration from the distribution defined
+       by cum_coeffs.
+
+    Args
+    ----
+    cum_coeffs : list of floats
+      The cumulative values of the wave function amplitudes squared.
+    """
+    cum_total = cum_coeffs[-1]
+
+    rand = random.uniform(0.0, cum_total)
+
+    det_chosen_ind = None
+    for i, cum_total in enumerate(cum_coeffs):
+      if rand < cum_total:
+        det_chosen_ind = i
+        break
+
+    if det_chosen_ind is None:
+      det_chosen_ind = self.ndets-1
+
+    return det_chosen_ind
+
+  def select_random_configs(self, n):
+    """Select n configurations from the distribution of wave function
+       amplitudes squared.
+
+    Args
+    ----
+    n : int
+      The number of unique configurations to be selected.
+    """
+
+    if n > self.ndets:
+      raise ValueError('Number of unique configurations requested is '
+          'larger than the total number of configurations.')
+
+    # Generate list of cumulative squared coefficients
+    cum_coeffs = []
+    cum_total = 0.0
+    for coeff in self.coeffs[:,0]:
+      cum_total += coeff**2
+      cum_coeffs.append(cum_total)
+
+    inds_chosen = []
+
+    n_chosen = 0
+    while n_chosen < n:
+      new_ind = self.select_single_random_config(cum_coeffs)
+      if new_ind not in inds_chosen:
+        inds_chosen.append(new_ind)
+        n_chosen += 1
+
+    assert n_chosen == n
+
+    return inds_chosen

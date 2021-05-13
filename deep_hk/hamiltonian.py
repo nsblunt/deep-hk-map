@@ -132,6 +132,12 @@ class LatticeHamil(metaclass=abc.ABCMeta):
       List of determinants which span the space under consideration.
       Each determinant is represented as a tuple holding the occupied
       sites.
+    configs : list of (ndarray of size norbs)
+      The same list of determinants stored in dets, but stored in a
+      different representation. Here, each configuration is a tuple of
+      integers, where 0 represents that the orbital is unoccupied, 1
+      that it is occupied. This is only created if generate_configs
+      is called.
     ndets : int
       The total number of determinants.
     hamil : scipy csr_matrix
@@ -163,6 +169,7 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     self.seed = seed
 
     self.dets = None
+    self.configs = None
     self.ndets = None
 
     self.hamil = None
@@ -365,7 +372,7 @@ class LatticeHamil(metaclass=abc.ABCMeta):
       The external potential.
     """
     self.add_potential_to_hamil(V)
-    energy = np.dot(wf, self.hamil.multiply(wf))
+    energy = np.dot(wf, self.hamil.dot(wf)) / np.dot(wf, wf)
     return energy
 
 
@@ -619,3 +626,17 @@ class SpinlessHubbard(LatticeHamil):
       return True
     else:
       return False
+
+  def generate_configs(self):
+    """Generate the configurations, stored as tuples of 0's and 1's,
+       where 0 indicates that an orbital is unoccupied, 1 that it is
+       occupied.
+    """
+
+    self.configs = []
+
+    for det in self.dets:
+      config = np.zeros(self.norbs, dtype=float)
+      for orb in det:
+        config[orb] = 1
+      self.configs.append(config)
