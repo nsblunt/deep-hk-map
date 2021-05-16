@@ -215,6 +215,11 @@ class WaveFunction:
     ----
     cum_coeffs : list of floats
       The cumulative values of the wave function amplitudes squared.
+
+    Returns
+    -------
+    det_chosen_ind : int
+      The index of the chosen determinant within the full list.
     """
     cum_total = cum_coeffs[-1]
 
@@ -239,6 +244,11 @@ class WaveFunction:
     ----
     n : int
       The number of unique configurations to be selected.
+
+    Returns
+    -------
+    inds_chosen : int
+      The indices of the chosen determinants within the full list.
     """
 
     if n > self.ndets:
