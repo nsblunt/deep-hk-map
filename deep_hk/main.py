@@ -39,6 +39,8 @@ flags.DEFINE_boolean('const_potential_sum', False, 'If true, then the sum '
     'of the applied potential is a constant value (potential_sum_val).')
 flags.DEFINE_float('potential_sum_val', 0.0, 'If const_potential_sum is '
     'true, then this is the value of potential summed over all sites.')
+flags.DEFINE_boolean('nonlocal_potential', False, 'If true then apply '
+    'random nonlocal potentials. If False, use local potentials.')
 
 # Define the parameters for data (training, validation, test).
 flags.DEFINE_integer('ntrain', 12800, 'Number of training potentials to '
@@ -150,6 +152,7 @@ def main(argv):
         nsites=FLAGS.nsites,
         fixed_nparticles=FLAGS.fixed_nparticles,
         nparticles=FLAGS.nparticles,
+        nonlocal_pot=FLAGS.nonlocal_potential,
         seed=FLAGS.seed)
   elif FLAGS.system == 'hubbard':
     system = hamiltonian.Hubbard(
@@ -162,6 +165,7 @@ def main(argv):
         nparticles=FLAGS.nparticles,
         fixed_Ms=FLAGS.fixed_Ms,
         Ms=FLAGS.Ms,
+        nonlocal_pot=FLAGS.nonlocal_potential,
         seed=FLAGS.seed)
   system.construct()
 
@@ -171,6 +175,7 @@ def main(argv):
       npot=FLAGS.ntrain,
       input_type=FLAGS.input_type,
       output_type=FLAGS.output_type,
+      nonlocal_pot=FLAGS.nonlocal_potential,
       all_configs=FLAGS.all_configs,
       nconfigs_per_pot=FLAGS.nconfigs_per_pot,
       load=FLAGS.load_train_data_csv,
@@ -185,6 +190,7 @@ def main(argv):
         npot=FLAGS.nvalidation,
         input_type=FLAGS.input_type,
         output_type=FLAGS.output_type,
+        nonlocal_pot=FLAGS.nonlocal_potential,
         all_configs=FLAGS.all_configs,
         nconfigs_per_pot=FLAGS.nconfigs_per_pot,
         load=FLAGS.load_valid_data_csv,
@@ -202,6 +208,7 @@ def main(argv):
       npot=FLAGS.ntest,
       input_type=FLAGS.input_type,
       output_type=FLAGS.output_type,
+      nonlocal_pot=FLAGS.nonlocal_potential,
       all_configs=FLAGS.all_configs,
       nconfigs_per_pot=FLAGS.nconfigs_per_pot,
       load=FLAGS.load_test_data_csv,
@@ -278,16 +285,16 @@ def main(argv):
       criterion,
       device=device)
 
-  assess.assess_predicted_energies_from_coeffs(
-      net,
-      data_test,
-      criterion,
-      device=device)
+  #assess.assess_predicted_energies_from_coeffs(
+  #    net,
+  #    data_test,
+  #    criterion,
+  #    device=device)
 
-  assess.calc_infidelities_from_coeffs(
-      net,
-      data_test,
-      device=device)
+  #assess.calc_infidelities_from_coeffs(
+  #    net,
+  #    data_test,
+  #    device=device)
 
   #assess.assess_predicted_energies_from_wf(
   #    net,

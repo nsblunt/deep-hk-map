@@ -91,6 +91,7 @@ class LatticeHamil(metaclass=abc.ABCMeta):
                Ms,
                fixed_nparticles,
                nparticles,
+               nonlocal_pot=False,
                seed=7):
     """Initialises an object for the Hamiltonian of a lattice model.
 
@@ -168,6 +169,8 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     self.nparticles = nparticles
     self.seed = seed
 
+    self.nonlocal_pot = nonlocal_pot
+
     self.dets = None
     self.configs = None
     self.ndets = None
@@ -179,6 +182,16 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     self.row_ind = []
     self.col_ind = []
     self.diag_pos = []
+
+    # Holds the positions of Hamiltonian elements H_{ij} where i and j
+    # are up to a single excitation apart, within the sparse
+    # representation of the Hamiltonian. These are the elements that
+    # are modified when a non-local potential is added.
+    self.nonlocal_pos = []
+    # Holds the values of the Hamiltonian elements where a non-local
+    # potential will be added later, in the same order that they appear
+    # with the spare representation of the Hamiltonian matrix.
+    self.hamil_without_nonlocal = []
 
     random.seed(self.seed)
 
@@ -204,9 +217,12 @@ class LatticeHamil(metaclass=abc.ABCMeta):
           self.hamil_data.append(diag_elem)
           self.row_ind.append(i)
           self.col_ind.append(i)
-          self.diag_pos.append(diag_counter)
 
+          self.diag_pos.append(diag_counter)
           self.hamil_diag[i] = diag_elem
+          if self.nonlocal_pot:
+            self.nonlocal_pos.append(diag_counter)
+            self.hamil_without_nonlocal.append(diag_elem)
         else:
           # The number of occupied orbitals for each determinant.
           count_j = len(self.dets[j])
@@ -222,6 +238,13 @@ class LatticeHamil(metaclass=abc.ABCMeta):
             # Can only have a non-zero off-diagonal element for a single
             # excitation, which is this condition:
             if count_ex == 2:
+              # If applying random non-local potentials, then we store
+              # the positions of the single excitations in the sparse
+              # Hamiltonian matrix.
+              if self.nonlocal_pot:
+                offdiag_counter = len(self.hamil_data)
+                self.nonlocal_pos.append(offdiag_counter)
+
               # If connected then we have a non-zero Hamiltonian element.
               if self.connected(ind_ex):
                 hamil_elem = self.off_diag_hamil_elem(
@@ -231,6 +254,18 @@ class LatticeHamil(metaclass=abc.ABCMeta):
                 self.hamil_data.append(hamil_elem)
                 self.row_ind.append(i)
                 self.col_ind.append(j)
+              else:
+                if self.nonlocal_pot:
+                  hamil_elem = 0.0
+                  self.hamil_data.append(hamil_elem)
+                  self.row_ind.append(i)
+                  self.col_ind.append(j)
+
+              if self.nonlocal_pot:
+                # Store the value of the Hamiltonian at an element where
+                # a non-local potential may later be added.
+                self.hamil_without_nonlocal.append(hamil_elem)
+
 
     # Make the Hamiltonian in CSR form.
     self.hamil = csr_matrix(
@@ -343,6 +378,26 @@ class LatticeHamil(metaclass=abc.ABCMeta):
       V += diff_each_site
     return V
 
+  def gen_rand_nonlocal_potential(self):
+    """Generate a random nonlocal potential, where the potential on
+       each site is a random number between -self.max_V and +self.max_V.
+
+       The potential matrix is symmetric, as required to make the
+       Hamiltonian Hermitian.
+
+    Returns
+    -------
+    V : numpy ndarray of size (nsites*(nsites+1)/2)
+      A random external potential.
+    """
+    V = np.zeros( (self.nsites, self.nsites) )
+    for i in range(self.nsites):
+      for j in range(i,self.nsites):
+        V[i,j] = random.uniform(-self.max_V, self.max_V)
+        V[j,i] = V[i,j]
+
+    return V
+
   def add_potential_to_hamil(self, V):
     """Add the potential V into the Hamiltonian object, hamil.
 
@@ -359,6 +414,47 @@ class LatticeHamil(metaclass=abc.ABCMeta):
         # Convert orbital index to site index.
         site = orb // self.nspin
         self.hamil.data[diag_pos] += V[site]
+
+  def add_nonlocal_potential_to_hamil(self, V):
+    """Add a non-local potential V into the Hamiltonian object, hamil.
+
+    Args
+    ----
+    V : numpy ndarray of size (nsites,nistes)
+      An external non-local potential.
+    """
+
+    for i, hamil_ind in enumerate(self.nonlocal_pos):
+      det_i_ind = self.row_ind[hamil_ind]
+      det_j_ind = self.col_ind[hamil_ind]
+
+      det_i = self.dets[det_i_ind]
+      det_j = self.dets[det_j_ind]
+
+      # Get the orbitals involved in the excitation
+      ind_ex_set = set(det_i).symmetric_difference(set(det_j))
+      ind_ex = tuple(ind_ex_set)
+      count_ex = len(ind_ex)
+
+      self.hamil.data[hamil_ind] = self.hamil_without_nonlocal[i]
+
+      if count_ex == 0:
+        # Diagonal element
+        # Loop over all occupied sites in the determinant
+        for orb in det_i:
+          # Convert orbital index to site index
+          site = orb // self.nspin
+          self.hamil.data[hamil_ind] += V[site,site]
+      elif count_ex == 2:
+        # Single excitation
+        # Convert orbital indices to site indices
+        site_1 = ind_ex[0] // self.nspin
+        site_2 = ind_ex[1] // self.nspin
+        par = self.parity_single(det_i, det_j, ind_ex)
+        self.hamil.data[hamil_ind] += par * V[site_1,site_2]
+      else:
+        raise ValueError('Greater than single excitation found in '
+            'non-local potential calculation.')
 
   def calc_energy(self, wf, V):
     """Calculate the expectation value of the Hamiltonian, with respect
@@ -389,6 +485,7 @@ class Hubbard(LatticeHamil):
                nparticles,
                fixed_Ms=True,
                Ms=0,
+               nonlocal_pot=False,
                seed=7):
     """Initialises an object for the Hamiltonian of a Hubbard model.
 
@@ -414,6 +511,7 @@ class Hubbard(LatticeHamil):
         Ms=Ms,
         fixed_nparticles=fixed_nparticles,
         nparticles=nparticles,
+        nonlocal_pot=nonlocal_pot,
         seed=seed)
 
   def generate_dets(self):
@@ -520,6 +618,7 @@ class SpinlessHubbard(LatticeHamil):
                nsites,
                fixed_nparticles,
                nparticles,
+               nonlocal_pot=False,
                seed=7):
     """Initialises an object for the Hamiltonian of a spinless Hubbard
        model.
@@ -546,6 +645,7 @@ class SpinlessHubbard(LatticeHamil):
         Ms=0,
         fixed_nparticles=fixed_nparticles,
         nparticles=nparticles,
+        nonlocal_pot=nonlocal_pot,
         seed=seed)
 
   def generate_dets(self):
