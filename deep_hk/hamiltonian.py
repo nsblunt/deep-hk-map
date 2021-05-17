@@ -471,6 +471,16 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     energy = np.dot(wf, self.hamil.dot(wf)) / np.dot(wf, wf)
     return energy
 
+  def remove_sign_problem(self):
+    """Make all off-diagonal Hamiltonian elements negative, which
+       removes the sign problem in the Hamiltonian.
+    """
+
+    for i in range(len(self.hamil.data)):
+      # Off-diagonal element
+      if self.row_ind[i] != self.col_ind[i]:
+        if self.hamil.data[i] > 0.0:
+          self.hamil.data[i] *= -1.0
 
 class Hubbard(LatticeHamil):
   """Hamiltonian for a Hubbard model."""
