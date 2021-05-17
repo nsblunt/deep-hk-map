@@ -87,7 +87,8 @@ flags.DEFINE_enum(
     'Specify which object we pass into the network input.')
 flags.DEFINE_enum('output_type', 'energy',
     ['energy', 'wave_function', 'potential', 'density', '1-rdm', 'corr_fn',
-    'coeff'], 'Specify which object should be output by the network.')
+    'coeff', 'abs_wave_function'], 'Specify which object should be output by '
+    'the network.')
 flags.DEFINE_enum('activation_fn', 'relu',
     ['relu', 'elu', 'sigmoid', 'tanh'],
     'Define the activation function used.')
@@ -220,6 +221,8 @@ def main(argv):
   ninput = data_train.ninput
   noutput = data_train.noutput
 
+  wf_output = 'wave_function' in FLAGS.output_type
+
   # Fully-connected networks.
   if FLAGS.net_type == 'linear':
     layer_widths = [int(s) for s in FLAGS.layer_widths]
@@ -227,7 +230,7 @@ def main(argv):
         ninput,
         layer_widths,
         noutput,
-        wf_output = FLAGS.output_type == 'wave_function')
+        wf_output=wf_output)
     net = networks.LinearNet(
         layers_list,
         FLAGS.activation_fn)
@@ -252,7 +255,7 @@ def main(argv):
     net.load(FLAGS.load_path)
 
   # Define the loss function.
-  if FLAGS.output_type == 'wave_function':
+  if wf_output:
     criterion = train.Infidelity()
   else:
     criterion = nn.L1Loss()

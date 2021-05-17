@@ -140,7 +140,7 @@ class Data(Dataset):
 
     if output_type == 'energy':
       self.noutput = 1
-    elif output_type == 'wave_function':
+    elif 'wave_function' in output_type:
       self.noutput = system.ndets
     elif output_type == 'potential' or output_type == 'density':
       self.noutput = system.nsites
@@ -194,6 +194,9 @@ class Data(Dataset):
 
     t1 = time.perf_counter()
 
+    tot_frac_sign_flip = 0.0
+    tot_av_coeff = 0.0
+
     # Loop over randomly-generated potentials
     for i in range(self.npot):
 
@@ -212,6 +215,11 @@ class Data(Dataset):
           dets=system.dets)
 
       wf.solve_eigenvalue(system.hamil)
+
+      frac_sign_flip = wf.sign_flip_fraction()
+      tot_frac_sign_flip += frac_sign_flip
+      av_coeff = wf.average_coeff()
+      tot_av_coeff += abs(av_coeff)
 
       self.potentials.append(V)
       self.energies.append(wf.energies[0])
@@ -262,6 +270,8 @@ class Data(Dataset):
         self.labels[i,:] = wf.energies[0]
       elif self.output_type == 'wave_function':
         self.labels[i,:] = torch.from_numpy(wf.coeffs[:,0])
+      elif self.output_type == 'abs_wave_function':
+        self.labels[i,:] = torch.from_numpy(abs(wf.coeffs[:,0]))
       elif self.output_type == 'potential':
         self.labels[i,:] = torch.from_numpy(V)
       elif self.output_type == 'density':
@@ -277,6 +287,12 @@ class Data(Dataset):
         for j, det_ind in enumerate(det_inds):
           ind = i*self.nconfigs_per_pot + j
           self.labels[ind,0] = wf.coeffs[det_ind,0] / np.sign(wf.coeffs[0,0])
+
+    tot_frac_sign_flip /= self.npot
+    tot_av_coeff /= self.npot
+
+    print('Sign flip fraction: ', tot_frac_sign_flip)
+    print('Average coefficient: ', tot_av_coeff)
 
     t2 = time.perf_counter()
 
