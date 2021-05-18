@@ -475,7 +475,6 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     """Make all off-diagonal Hamiltonian elements negative, which
        removes the sign problem in the Hamiltonian.
     """
-
     for i in range(len(self.hamil.data)):
       # Off-diagonal element
       if self.row_ind[i] != self.col_ind[i]:

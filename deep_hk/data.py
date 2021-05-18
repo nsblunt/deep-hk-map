@@ -18,6 +18,7 @@ class Data(Dataset):
                input_type='potential',
                output_type='energy',
                nonlocal_pot=False,
+               remove_sign_problem=False,
                all_configs=True,
                nconfigs_per_pot=1,
                load=False,
@@ -41,6 +42,9 @@ class Data(Dataset):
     nonlocal_pot : bool
       If True then apply a non-local potential. If False then a local
       potential is used.
+    remove_sign_problem : bool
+      If True then after generating the Hamiltonian, make all of its
+      off-diagonal elements negative, which removes any sign problem.
     all_configs : bool
       When predicting individual coefficients as output, if True
       then every configuration is used as a data point for each
@@ -89,7 +93,9 @@ class Data(Dataset):
     self.npot = npot
     self.input_type = input_type
     self.output_type = output_type
+
     self.nonlocal_pot = nonlocal_pot
+    self.remove_sign_problem = remove_sign_problem
 
     self.inputs = None
     self.labels = None
@@ -208,6 +214,9 @@ class Data(Dataset):
             const_potential_sum,
             potential_sum_val)
         system.add_potential_to_hamil(V)
+
+      if self.remove_sign_problem:
+        system.remove_sign_problem()
       
       wf = WaveFunction(
           nsites=system.nsites,
