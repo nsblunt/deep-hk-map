@@ -112,10 +112,12 @@ class Data(Dataset):
 
     self.all_configs = all_configs
 
-    # The number of random numbers that define each potential
+    # The number of inputs that define each potential
     if self.nonlocal_pot:
-      #self.npot_vals = int(system.nsites*(system.nsites+1)/2)
-      self.npot_vals = system.nsites**2
+      if self.input_type == 'potential_compressed':
+        self.npot_vals = int(system.nsites*(system.nsites+1)/2)
+      else:
+        self.npot_vals = system.nsites**2
     else:
       self.npot_vals = system.nsites
 
@@ -233,9 +235,13 @@ class Data(Dataset):
       self.potentials.append(V)
       self.energies.append(wf.energies[0])
 
-      if self.input_type == 'potential':
+      if self.input_type == 'potential' or self.input_type == 'potential_compressed':
         if self.nonlocal_pot:
-          self.inputs[i,:] = torch.from_numpy(V.flatten())
+          if self.input_type == 'potential_compressed':
+            V_compressed = system.compress_potential(V)
+            self.inputs[i,:] = torch.from_numpy(V_compressed)
+          else:
+            self.inputs[i,:] = torch.from_numpy(V.flatten())
         else:
           self.inputs[i,:] = torch.from_numpy(V)
       elif self.input_type == 'density':

@@ -365,7 +365,7 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     Returns
     -------
     V : numpy ndarray of size (nsites)
-      A random external potential.
+      A random external local potential.
     """
     V = np.zeros( self.nsites )
     for i in range(self.nsites):
@@ -379,7 +379,7 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     return V
 
   def gen_rand_nonlocal_potential(self):
-    """Generate a random nonlocal potential, where the potential on
+    """Generate a random non-local potential, where the potential on
        each site is a random number between -self.max_V and +self.max_V.
 
        The potential matrix is symmetric, as required to make the
@@ -387,16 +387,42 @@ class LatticeHamil(metaclass=abc.ABCMeta):
 
     Returns
     -------
-    V : numpy ndarray of size (nsites*(nsites+1)/2)
-      A random external potential.
+    V : numpy ndarray of size (nsites,nsites)
+      A random external non-local potential.
     """
     V = np.zeros( (self.nsites, self.nsites) )
     for i in range(self.nsites):
-      for j in range(i,self.nsites):
+      for j in range(i+1):
         V[i,j] = random.uniform(-self.max_V, self.max_V)
         V[j,i] = V[i,j]
 
     return V
+
+  def compress_potential(self, V):
+    """Take a non-local potential stored in V, which is a
+       two-dimensional symmetric matrix, and convert it into a
+       1D array without the repeated elements.
+
+    Args
+    ----
+    V : numpy ndarray of size (nsites, nsites)
+      A non-local external potential, stored as a 2D array.
+
+    Returns
+    -------
+    V_compressed : numpy ndarray of size (nsites*(nsites+1)/2)
+      V converted into a compressed 1D array.
+    """
+
+    nelem = int(self.nsites*(self.nsites+1)/2)
+    V_compressed = np.zeros(nelem)
+
+    for i in range(self.nsites):
+      for j in range(i+1):
+        ind = int(i*(i+1)/2) + j
+        V_compressed[ind] = V[i,j]
+
+    return V_compressed
 
   def add_potential_to_hamil(self, V):
     """Add the potential V into the Hamiltonian object, hamil.
