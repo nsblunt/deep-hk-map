@@ -528,11 +528,13 @@ class LatticeHamil(metaclass=abc.ABCMeta):
           self.hamil.data[hamil_ind] += V[site,site]
       elif count_ex == 2:
         # Single excitation
-        # Convert orbital indices to site indices
-        site_1 = ind_ex[0] // self.nspin
-        site_2 = ind_ex[1] // self.nspin
-        par = self.parity_single(det_i, det_j, ind_ex)
-        self.hamil.data[hamil_ind] += par * V[site_1,site_2]
+        # Make sure spin is conserved
+        if ind_ex[0]%self.nspin == ind_ex[1]%self.nspin:
+          # Convert orbital indices to site indices
+          site_1 = ind_ex[0] // self.nspin
+          site_2 = ind_ex[1] // self.nspin
+          par = self.parity_single(det_i, det_j, ind_ex)
+          self.hamil.data[hamil_ind] += par * V[site_1,site_2]
       else:
         raise ValueError('Greater than single excitation found in '
             'non-local potential calculation.')
