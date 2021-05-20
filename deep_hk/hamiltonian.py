@@ -1,6 +1,7 @@
 """Define and construct Hamiltonian objects for lattice models."""
 
 import abc
+import bisect
 from heapq import merge
 import itertools
 import numpy as np
@@ -133,6 +134,8 @@ class LatticeHamil(metaclass=abc.ABCMeta):
       List of determinants which span the space under consideration.
       Each determinant is represented as a tuple holding the occupied
       sites.
+    dets_dict : dictionary
+      Maps determinants in dets to their position in that list.
     configs : list of (ndarray of size norbs)
       The same list of determinants stored in dets, but stored in a
       different representation. Here, each configuration is a tuple of
@@ -172,6 +175,7 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     self.nonlocal_pot = nonlocal_pot
 
     self.dets = None
+    self.dets_dict = None
     self.configs = None
     self.ndets = None
 
@@ -209,7 +213,10 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     for i in range(self.ndets):
       count_i = len(self.dets[i])
 
-      for j in range(self.ndets):
+      positions_j, dets_j = self.gen_excitations(self.dets[i])
+
+      #for j in range(self.ndets):
+      for j, det_j in zip(positions_j, dets_j):
         if i == j:
           diag_elem = self.diag_hamil_elem(self.dets[i])
           diag_counter = len(self.hamil_data)
@@ -271,6 +278,54 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     self.hamil = csr_matrix(
         (self.hamil_data, (self.row_ind, self.col_ind)),
         shape=(self.ndets, self.ndets))
+
+  def gen_excitations(self, occ_i):
+    """Generate a list of determinants which are excitations from the
+       determinant represented by occ_i, including occ_i itself.
+
+    Args
+    ----
+    occ_i : tuple of int
+      Tuple holding all occupied orbitals in the determinant.
+
+    Returns
+    -------
+    sorted_positions : list of int
+      The positions of the excitations in the main list of determinants
+      (self.dets), sorted in the same order.
+    sorted_excitations : list of (tuple of int)
+      A list of determinants which are the excitations of occ_i,
+      including occ_i. They are sorted in the same order as the main
+      list of determinants (self.dets).
+    """
+    excitations = [occ_i]
+    occ_i_pos = self.dets_dict[occ_i]
+    positions = [occ_i_pos]
+
+    all_orbs = range(self.norbs)
+    unocc_orbs = set(all_orbs).difference(set(occ_i))
+
+    for ind_i, i in reversed(list(enumerate(occ_i))):
+      for a in unocc_orbs:
+        # Make sure the excitation conserves spin
+        if i%self.nspin == a%self.nspin:
+          occ_j_list = list(occ_i)
+          occ_j_list.pop(ind_i)
+          # Insert a and keep the list sorted
+          bisect.insort(occ_j_list, a)
+
+          occ_j = tuple(occ_j_list)
+          occ_j_pos = self.dets_dict[occ_j]
+          excitations.append(occ_j)
+          positions.append(occ_j_pos)
+
+    # Now we sort the excitations to be in the same order as their
+    # positions in the full list of determinants
+    sorted_combined = sorted(zip(positions, excitations))
+    sorted_positions = [x[0] for x in sorted_combined]
+    sorted_excitations = [x[1] for x in sorted_combined]
+
+    return sorted_positions, sorted_excitations
 
   @abc.abstractmethod
   def diag_hamil_elem(self, occ_list):
@@ -570,6 +625,12 @@ class Hubbard(LatticeHamil):
 
     self.ndets = len(self.dets)
 
+    # Generate dictionary to allow us to efficiently find the index
+    # of a given determinant in the full list.
+    self.dets_dict = {}
+    for i, det_i in enumerate(self.dets):
+      self.dets_dict[det_i] = i
+
   def diag_hamil_elem(self, occ_list):
     """Generate and return the diagonal element of the Hamiltonian,
        corresponding to determinant represented by occ_list.
@@ -697,6 +758,12 @@ class SpinlessHubbard(LatticeHamil):
       self.dets = generate_all_dets(self.norbs)
 
     self.ndets = len(self.dets)
+
+    # Generate dictionary to allow us to efficiently find the index
+    # of a given determinant in the full list.
+    self.dets_dict = {}
+    for i, det_i in enumerate(self.dets):
+      self.dets_dict[det_i] = i
 
   def diag_hamil_elem(self, occ_list):
     """Generate and return the diagonal element of the Hamiltonian,

@@ -4,6 +4,7 @@ from absl import app
 from absl import flags
 from deep_hk import assess, data, hamiltonian, networks, train
 import json
+import time
 
 import torch
 import torch.nn as nn
@@ -147,6 +148,7 @@ def main(argv):
     raise AssertionError('CUDA device not available.')
   device = torch.device('cuda:0' if use_cuda else 'cpu')
 
+  t1 = time.perf_counter()
   # Define and create the Hamiltonian object.
   if FLAGS.system == 'spinless_hubbard':
     system = hamiltonian.SpinlessHubbard(
@@ -173,8 +175,11 @@ def main(argv):
         nonlocal_pot=FLAGS.nonlocal_potential,
         seed=FLAGS.seed)
   system.construct()
+  t2 = time.perf_counter()
+  print('Time to generate Hamiltonian: {:.6f}\n'.format(t2-t1), flush=True)
 
   # Create the data sets.
+  t1 = time.perf_counter()
   data_train = data.Data(
       system=system,
       npot=FLAGS.ntrain,
@@ -189,8 +194,11 @@ def main(argv):
       path='data_train.csv',
       const_potential_sum=FLAGS.const_potential_sum,
       potential_sum_val=FLAGS.potential_sum_val)
+  t2 = time.perf_counter()
+  print('Time to generate training data: {:.6f}\n'.format(t2-t1), flush=True)
 
   if FLAGS.nvalidation > 0:
+    t1 = time.perf_counter()
     data_valid = data.Data(
         system=system,
         npot=FLAGS.nvalidation,
@@ -207,9 +215,12 @@ def main(argv):
         potential_sum_val=FLAGS.potential_sum_val)
     # Convert to a tuple for input into the train function.
     data_valid = (data_valid,)
+    t2 = time.perf_counter()
+    print('Time to generate validation data: {:.6f}\n'.format(t2-t1), flush=True)
   else:
     data_valid = None
 
+  t1 = time.perf_counter()
   data_test = data.Data(
       system=system,
       npot=FLAGS.ntest,
@@ -224,6 +235,8 @@ def main(argv):
       path='data_test.csv',
       const_potential_sum=FLAGS.const_potential_sum,
       potential_sum_val=FLAGS.potential_sum_val)
+  t2 = time.perf_counter()
+  print('Time to generate test data: {:.6f}\n'.format(t2-t1), flush=True)
 
   ninput = data_train.ninput
   noutput = data_train.noutput

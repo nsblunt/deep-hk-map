@@ -5,6 +5,7 @@ import numpy as np
 from scipy.sparse.linalg import eigsh
 from itertools import count
 import random
+import time
 
 class WaveFunction:
   """Class to store wave functions and calculate properties."""
