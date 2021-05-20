@@ -328,21 +328,21 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     return sorted_positions, sorted_excitations
 
   @abc.abstractmethod
-  def diag_hamil_elem(self, occ_list):
+  def diag_hamil_elem(self, occ):
     """Generate and return the diagonal element of the Hamiltonian,
-       corresponding to determinant represented by occ_list.
+       corresponding to determinant represented by occ.
 
     Args
     ----
-    occ_list : tuple of int
+    occ : tuple of int
       Tuple holding all occupied orbitals in the determinant.
     """
 
   @abc.abstractmethod
-  def off_diag_hamil_elem(self, occ_list_1, occ_list_2, ind_ex):
+  def off_diag_hamil_elem(self, occ_1, occ_2, ind_ex):
     """Generate and return the off-diagonal element of the Hamiltonian,
-       corresponding to determinants represented by occ_list_1 and
-       occ_list_2.
+       corresponding to determinants represented by occ_1 and
+       occ_2.
 
        IMPORTANT: This function assumes that the two determinants are
        a single excitation apart, which should be checked before using
@@ -350,9 +350,9 @@ class LatticeHamil(metaclass=abc.ABCMeta):
 
     Args
     ----
-    occ_list_1 : tuple of int
+    occ_1 : tuple of int
       Tuple holding all occupied orbitals in determinant 1.
-    occ_list_2 : tuple of int
+    occ_2 : tuple of int
       Tuple holding all occupied orbitals in determinant 2.
     ind_ex : tuple of int
       The two orbitals whose occupation changes in the excitation.
@@ -633,16 +633,16 @@ class Hubbard(LatticeHamil):
     for i, det_i in enumerate(self.dets):
       self.dets_dict[det_i] = i
 
-  def diag_hamil_elem(self, occ_list):
+  def diag_hamil_elem(self, occ):
     """Generate and return the diagonal element of the Hamiltonian,
-       corresponding to determinant represented by occ_list.
+       corresponding to determinant represented by occ.
 
     Args
     ----
-    occ_list : tuple of int
+    occ : tuple of int
       Tuple holding all occupied spin orbitals in the determinant.
     """
-    nparticles = len(occ_list)
+    nparticles = len(occ)
 
     if nparticles == 0:
       return 0.0
@@ -653,17 +653,17 @@ class Hubbard(LatticeHamil):
       for ind in range(nparticles-1):
         # Alpha (beta) orbitals have an even (odd) index.
         # If this is an alpha electron:
-        if occ_list[ind]%2 == 0:
-          if occ_list[ind]+1 == occ_list[ind+1]:
+        if occ[ind]%2 == 0:
+          if occ[ind]+1 == occ[ind+1]:
             ndouble += 1
 
     diag_elem = (self.U * ndouble) - (self.mu * nparticles)
     return diag_elem
 
-  def off_diag_hamil_elem(self, occ_list_1, occ_list_2, ind_ex):
+  def off_diag_hamil_elem(self, occ_1, occ_2, ind_ex):
     """Generate and return the off-diagonal element of the Hamiltonian,
-       corresponding to determinants represented by occ_list_1 and
-       occ_list_2.
+       corresponding to determinants represented by occ_1 and
+       occ_2.
 
        IMPORTANT: This function assumes that the two determinants are
        a single excitation apart, which should be checked before using
@@ -671,14 +671,14 @@ class Hubbard(LatticeHamil):
 
     Args
     ----
-    occ_list_1 : tuple of int
+    occ_1 : tuple of int
       Tuple holding all occupied orbitals in determinant 1.
-    occ_list_2 : tuple of int
+    occ_2 : tuple of int
       Tuple holding all occupied orbitals in determinant 2.
     ind_ex : tuple of int
       The two orbitals whose occupation changes in the excitation.
     """
-    par = self.parity_single(occ_list_1, occ_list_2, ind_ex)
+    par = self.parity_single(occ_1, occ_2, ind_ex)
     return -self.t * par
 
   def connected(self, ind_ex):
@@ -767,16 +767,16 @@ class SpinlessHubbard(LatticeHamil):
     for i, det_i in enumerate(self.dets):
       self.dets_dict[det_i] = i
 
-  def diag_hamil_elem(self, occ_list):
+  def diag_hamil_elem(self, occ):
     """Generate and return the diagonal element of the Hamiltonian,
-       corresponding to determinant represented by occ_list.
+       corresponding to determinant represented by occ.
 
     Args
     ----
-    occ_list : tuple of int
+    occ : tuple of int
       Tuple holding all occupied orbitals in the determinant.
     """
-    nparticles = len(occ_list)
+    nparticles = len(occ)
 
     if nparticles == 0:
       return 0.0
@@ -785,19 +785,19 @@ class SpinlessHubbard(LatticeHamil):
     nbonds = 0
     if nparticles > 1:
       for ind in range(nparticles-1):
-        if occ_list[ind]+1 == occ_list[ind+1]:
+        if occ[ind]+1 == occ[ind+1]:
           nbonds += 1
       # Account for periodicity.
-      if occ_list[0] == 0 and occ_list[nparticles-1] == self.norbs-1:
+      if occ[0] == 0 and occ[nparticles-1] == self.norbs-1:
         nbonds += 1
 
     diag_elem = (self.U * nbonds) - (self.mu * nparticles)
     return diag_elem
 
-  def off_diag_hamil_elem(self, occ_list_1, occ_list_2, ind_ex):
+  def off_diag_hamil_elem(self, occ_1, occ_2, ind_ex):
     """Generate and return the off-diagonal element of the Hamiltonian,
-       corresponding to determinants represented by occ_list_1 and
-       occ_list_2.
+       corresponding to determinants represented by occ_1 and
+       occ_2.
 
        IMPORTANT: This function assumes that the two determinants are
        a single excitation apart, which should be checked before using
@@ -805,14 +805,14 @@ class SpinlessHubbard(LatticeHamil):
 
     Args
     ----
-    occ_list_1 : tuple of int
+    occ_1 : tuple of int
       Tuple holding all occupied orbitals in determinant 1.
-    occ_list_2 : tuple of int
+    occ_2 : tuple of int
       Tuple holding all occupied orbitals in determinant 2.
     ind_ex : tuple of int
       The two orbitals whose occupation changes in the excitation.
     """
-    par = self.parity_single(occ_list_1, occ_list_2, ind_ex)
+    par = self.parity_single(occ_1, occ_2, ind_ex)
     return -self.t * par
 
   def connected(self, ind_ex):
