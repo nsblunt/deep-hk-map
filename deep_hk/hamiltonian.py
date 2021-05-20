@@ -1,6 +1,7 @@
 """Define and construct Hamiltonian objects for lattice models."""
 
 import abc
+import bisect
 from heapq import merge
 import itertools
 import numpy as np
@@ -91,6 +92,7 @@ class LatticeHamil(metaclass=abc.ABCMeta):
                Ms,
                fixed_nparticles,
                nparticles,
+               nonlocal_pot=False,
                seed=7):
     """Initialises an object for the Hamiltonian of a lattice model.
 
@@ -132,6 +134,8 @@ class LatticeHamil(metaclass=abc.ABCMeta):
       List of determinants which span the space under consideration.
       Each determinant is represented as a tuple holding the occupied
       sites.
+    dets_dict : dictionary
+      Maps determinants in dets to their position in that list.
     configs : list of (ndarray of size norbs)
       The same list of determinants stored in dets, but stored in a
       different representation. Here, each configuration is a tuple of
@@ -168,7 +172,10 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     self.nparticles = nparticles
     self.seed = seed
 
+    self.nonlocal_pot = nonlocal_pot
+
     self.dets = None
+    self.dets_dict = None
     self.configs = None
     self.ndets = None
 
@@ -179,6 +186,16 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     self.row_ind = []
     self.col_ind = []
     self.diag_pos = []
+
+    # Holds the positions of Hamiltonian elements H_{ij} where i and j
+    # are up to a single excitation apart, within the sparse
+    # representation of the Hamiltonian. These are the elements that
+    # are modified when a non-local potential is added.
+    self.nonlocal_pos = []
+    # Holds the values of the Hamiltonian elements where a non-local
+    # potential will be added later, in the same order that they appear
+    # with the spare representation of the Hamiltonian matrix.
+    self.hamil_without_nonlocal = []
 
     random.seed(self.seed)
 
@@ -196,7 +213,10 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     for i in range(self.ndets):
       count_i = len(self.dets[i])
 
-      for j in range(self.ndets):
+      positions_j, dets_j = self.gen_excitations(self.dets[i])
+
+      #for j in range(self.ndets):
+      for j, det_j in zip(positions_j, dets_j):
         if i == j:
           diag_elem = self.diag_hamil_elem(self.dets[i])
           diag_counter = len(self.hamil_data)
@@ -204,9 +224,12 @@ class LatticeHamil(metaclass=abc.ABCMeta):
           self.hamil_data.append(diag_elem)
           self.row_ind.append(i)
           self.col_ind.append(i)
-          self.diag_pos.append(diag_counter)
 
+          self.diag_pos.append(diag_counter)
           self.hamil_diag[i] = diag_elem
+          if self.nonlocal_pot:
+            self.nonlocal_pos.append(diag_counter)
+            self.hamil_without_nonlocal.append(diag_elem)
         else:
           # The number of occupied orbitals for each determinant.
           count_j = len(self.dets[j])
@@ -222,6 +245,13 @@ class LatticeHamil(metaclass=abc.ABCMeta):
             # Can only have a non-zero off-diagonal element for a single
             # excitation, which is this condition:
             if count_ex == 2:
+              # If applying random non-local potentials, then we store
+              # the positions of the single excitations in the sparse
+              # Hamiltonian matrix.
+              if self.nonlocal_pot:
+                offdiag_counter = len(self.hamil_data)
+                self.nonlocal_pos.append(offdiag_counter)
+
               # If connected then we have a non-zero Hamiltonian element.
               if self.connected(ind_ex):
                 hamil_elem = self.off_diag_hamil_elem(
@@ -231,28 +261,88 @@ class LatticeHamil(metaclass=abc.ABCMeta):
                 self.hamil_data.append(hamil_elem)
                 self.row_ind.append(i)
                 self.col_ind.append(j)
+              else:
+                if self.nonlocal_pot:
+                  hamil_elem = 0.0
+                  self.hamil_data.append(hamil_elem)
+                  self.row_ind.append(i)
+                  self.col_ind.append(j)
+
+              if self.nonlocal_pot:
+                # Store the value of the Hamiltonian at an element where
+                # a non-local potential may later be added.
+                self.hamil_without_nonlocal.append(hamil_elem)
+
 
     # Make the Hamiltonian in CSR form.
     self.hamil = csr_matrix(
         (self.hamil_data, (self.row_ind, self.col_ind)),
         shape=(self.ndets, self.ndets))
 
-  @abc.abstractmethod
-  def diag_hamil_elem(self, occ_list):
-    """Generate and return the diagonal element of the Hamiltonian,
-       corresponding to determinant represented by occ_list.
+  def gen_excitations(self, occ_i):
+    """Generate a list of determinants which are excitations from the
+       determinant represented by occ_i, including occ_i itself.
 
     Args
     ----
-    occ_list : tuple of int
+    occ_i : tuple of int
+      Tuple holding all occupied orbitals in the determinant.
+
+    Returns
+    -------
+    sorted_positions : list of int
+      The positions of the excitations in the main list of determinants
+      (self.dets), sorted in the same order.
+    sorted_excitations : list of (tuple of int)
+      A list of determinants which are the excitations of occ_i,
+      including occ_i. They are sorted in the same order as the main
+      list of determinants (self.dets).
+    """
+    excitations = [occ_i]
+    occ_i_pos = self.dets_dict[occ_i]
+    positions = [occ_i_pos]
+
+    all_orbs = range(self.norbs)
+    unocc_orbs = set(all_orbs).difference(set(occ_i))
+
+    for ind_i, i in reversed(list(enumerate(occ_i))):
+      for a in unocc_orbs:
+        # Make sure the excitation conserves spin
+        if i%self.nspin == a%self.nspin:
+          occ_j_list = list(occ_i)
+          occ_j_list.pop(ind_i)
+          # Insert a and keep the list sorted
+          bisect.insort(occ_j_list, a)
+
+          occ_j = tuple(occ_j_list)
+          occ_j_pos = self.dets_dict[occ_j]
+          excitations.append(occ_j)
+          positions.append(occ_j_pos)
+
+    # Now we sort the excitations to be in the same order as their
+    # positions in the full list of determinants
+    sorted_combined = sorted(zip(positions, excitations))
+    sorted_positions = [x[0] for x in sorted_combined]
+    sorted_excitations = [x[1] for x in sorted_combined]
+
+    return sorted_positions, sorted_excitations
+
+  @abc.abstractmethod
+  def diag_hamil_elem(self, occ):
+    """Generate and return the diagonal element of the Hamiltonian,
+       corresponding to determinant represented by occ.
+
+    Args
+    ----
+    occ : tuple of int
       Tuple holding all occupied orbitals in the determinant.
     """
 
   @abc.abstractmethod
-  def off_diag_hamil_elem(self, occ_list_1, occ_list_2, ind_ex):
+  def off_diag_hamil_elem(self, occ_1, occ_2, ind_ex):
     """Generate and return the off-diagonal element of the Hamiltonian,
-       corresponding to determinants represented by occ_list_1 and
-       occ_list_2.
+       corresponding to determinants represented by occ_1 and
+       occ_2.
 
        IMPORTANT: This function assumes that the two determinants are
        a single excitation apart, which should be checked before using
@@ -260,9 +350,9 @@ class LatticeHamil(metaclass=abc.ABCMeta):
 
     Args
     ----
-    occ_list_1 : tuple of int
+    occ_1 : tuple of int
       Tuple holding all occupied orbitals in determinant 1.
-    occ_list_2 : tuple of int
+    occ_2 : tuple of int
       Tuple holding all occupied orbitals in determinant 2.
     ind_ex : tuple of int
       The two orbitals whose occupation changes in the excitation.
@@ -330,7 +420,7 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     Returns
     -------
     V : numpy ndarray of size (nsites)
-      A random external potential.
+      A random external local potential.
     """
     V = np.zeros( self.nsites )
     for i in range(self.nsites):
@@ -342,6 +432,52 @@ class LatticeHamil(metaclass=abc.ABCMeta):
       diff_each_site = diff/self.nsites
       V += diff_each_site
     return V
+
+  def gen_rand_nonlocal_potential(self):
+    """Generate a random non-local potential, where the potential on
+       each site is a random number between -self.max_V and +self.max_V.
+
+       The potential matrix is symmetric, as required to make the
+       Hamiltonian Hermitian.
+
+    Returns
+    -------
+    V : numpy ndarray of size (nsites,nsites)
+      A random external non-local potential.
+    """
+    V = np.zeros( (self.nsites, self.nsites) )
+    for i in range(self.nsites):
+      for j in range(i+1):
+        V[i,j] = random.uniform(-self.max_V, self.max_V)
+        V[j,i] = V[i,j]
+
+    return V
+
+  def compress_potential(self, V):
+    """Take a non-local potential stored in V, which is a
+       two-dimensional symmetric matrix, and convert it into a
+       1D array without the repeated elements.
+
+    Args
+    ----
+    V : numpy ndarray of size (nsites, nsites)
+      A non-local external potential, stored as a 2D array.
+
+    Returns
+    -------
+    V_compressed : numpy ndarray of size (nsites*(nsites+1)/2)
+      V converted into a compressed 1D array.
+    """
+
+    nelem = int(self.nsites*(self.nsites+1)/2)
+    V_compressed = np.zeros(nelem)
+
+    for i in range(self.nsites):
+      for j in range(i+1):
+        ind = int(i*(i+1)/2) + j
+        V_compressed[ind] = V[i,j]
+
+    return V_compressed
 
   def add_potential_to_hamil(self, V):
     """Add the potential V into the Hamiltonian object, hamil.
@@ -360,6 +496,49 @@ class LatticeHamil(metaclass=abc.ABCMeta):
         site = orb // self.nspin
         self.hamil.data[diag_pos] += V[site]
 
+  def add_nonlocal_potential_to_hamil(self, V):
+    """Add a non-local potential V into the Hamiltonian object, hamil.
+
+    Args
+    ----
+    V : numpy ndarray of size (nsites,nistes)
+      An external non-local potential.
+    """
+
+    for i, hamil_ind in enumerate(self.nonlocal_pos):
+      det_i_ind = self.row_ind[hamil_ind]
+      det_j_ind = self.col_ind[hamil_ind]
+
+      det_i = self.dets[det_i_ind]
+      det_j = self.dets[det_j_ind]
+
+      # Get the orbitals involved in the excitation
+      ind_ex_set = set(det_i).symmetric_difference(set(det_j))
+      ind_ex = tuple(ind_ex_set)
+      count_ex = len(ind_ex)
+
+      self.hamil.data[hamil_ind] = self.hamil_without_nonlocal[i]
+
+      if count_ex == 0:
+        # Diagonal element
+        # Loop over all occupied sites in the determinant
+        for orb in det_i:
+          # Convert orbital index to site index
+          site = orb // self.nspin
+          self.hamil.data[hamil_ind] += V[site,site]
+      elif count_ex == 2:
+        # Single excitation
+        # Make sure spin is conserved
+        if ind_ex[0]%self.nspin == ind_ex[1]%self.nspin:
+          # Convert orbital indices to site indices
+          site_1 = ind_ex[0] // self.nspin
+          site_2 = ind_ex[1] // self.nspin
+          par = self.parity_single(det_i, det_j, ind_ex)
+          self.hamil.data[hamil_ind] += par * V[site_1,site_2]
+      else:
+        raise ValueError('Greater than single excitation found in '
+            'non-local potential calculation.')
+
   def calc_energy(self, wf, V):
     """Calculate the expectation value of the Hamiltonian, with respect
        to the provided wave function.
@@ -375,6 +554,15 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     energy = np.dot(wf, self.hamil.dot(wf)) / np.dot(wf, wf)
     return energy
 
+  def remove_sign_problem(self):
+    """Make all off-diagonal Hamiltonian elements negative, which
+       removes the sign problem in the Hamiltonian.
+    """
+    for i in range(len(self.hamil.data)):
+      # Off-diagonal element
+      if self.row_ind[i] != self.col_ind[i]:
+        if self.hamil.data[i] > 0.0:
+          self.hamil.data[i] *= -1.0
 
 class Hubbard(LatticeHamil):
   """Hamiltonian for a Hubbard model."""
@@ -389,6 +577,7 @@ class Hubbard(LatticeHamil):
                nparticles,
                fixed_Ms=True,
                Ms=0,
+               nonlocal_pot=False,
                seed=7):
     """Initialises an object for the Hamiltonian of a Hubbard model.
 
@@ -414,6 +603,7 @@ class Hubbard(LatticeHamil):
         Ms=Ms,
         fixed_nparticles=fixed_nparticles,
         nparticles=nparticles,
+        nonlocal_pot=nonlocal_pot,
         seed=seed)
 
   def generate_dets(self):
@@ -437,16 +627,22 @@ class Hubbard(LatticeHamil):
 
     self.ndets = len(self.dets)
 
-  def diag_hamil_elem(self, occ_list):
+    # Generate dictionary to allow us to efficiently find the index
+    # of a given determinant in the full list.
+    self.dets_dict = {}
+    for i, det_i in enumerate(self.dets):
+      self.dets_dict[det_i] = i
+
+  def diag_hamil_elem(self, occ):
     """Generate and return the diagonal element of the Hamiltonian,
-       corresponding to determinant represented by occ_list.
+       corresponding to determinant represented by occ.
 
     Args
     ----
-    occ_list : tuple of int
+    occ : tuple of int
       Tuple holding all occupied spin orbitals in the determinant.
     """
-    nparticles = len(occ_list)
+    nparticles = len(occ)
 
     if nparticles == 0:
       return 0.0
@@ -457,17 +653,17 @@ class Hubbard(LatticeHamil):
       for ind in range(nparticles-1):
         # Alpha (beta) orbitals have an even (odd) index.
         # If this is an alpha electron:
-        if occ_list[ind]%2 == 0:
-          if occ_list[ind]+1 == occ_list[ind+1]:
+        if occ[ind]%2 == 0:
+          if occ[ind]+1 == occ[ind+1]:
             ndouble += 1
 
     diag_elem = (self.U * ndouble) - (self.mu * nparticles)
     return diag_elem
 
-  def off_diag_hamil_elem(self, occ_list_1, occ_list_2, ind_ex):
+  def off_diag_hamil_elem(self, occ_1, occ_2, ind_ex):
     """Generate and return the off-diagonal element of the Hamiltonian,
-       corresponding to determinants represented by occ_list_1 and
-       occ_list_2.
+       corresponding to determinants represented by occ_1 and
+       occ_2.
 
        IMPORTANT: This function assumes that the two determinants are
        a single excitation apart, which should be checked before using
@@ -475,14 +671,14 @@ class Hubbard(LatticeHamil):
 
     Args
     ----
-    occ_list_1 : tuple of int
+    occ_1 : tuple of int
       Tuple holding all occupied orbitals in determinant 1.
-    occ_list_2 : tuple of int
+    occ_2 : tuple of int
       Tuple holding all occupied orbitals in determinant 2.
     ind_ex : tuple of int
       The two orbitals whose occupation changes in the excitation.
     """
-    par = self.parity_single(occ_list_1, occ_list_2, ind_ex)
+    par = self.parity_single(occ_1, occ_2, ind_ex)
     return -self.t * par
 
   def connected(self, ind_ex):
@@ -520,6 +716,7 @@ class SpinlessHubbard(LatticeHamil):
                nsites,
                fixed_nparticles,
                nparticles,
+               nonlocal_pot=False,
                seed=7):
     """Initialises an object for the Hamiltonian of a spinless Hubbard
        model.
@@ -546,6 +743,7 @@ class SpinlessHubbard(LatticeHamil):
         Ms=0,
         fixed_nparticles=fixed_nparticles,
         nparticles=nparticles,
+        nonlocal_pot=nonlocal_pot,
         seed=seed)
 
   def generate_dets(self):
@@ -563,16 +761,22 @@ class SpinlessHubbard(LatticeHamil):
 
     self.ndets = len(self.dets)
 
-  def diag_hamil_elem(self, occ_list):
+    # Generate dictionary to allow us to efficiently find the index
+    # of a given determinant in the full list.
+    self.dets_dict = {}
+    for i, det_i in enumerate(self.dets):
+      self.dets_dict[det_i] = i
+
+  def diag_hamil_elem(self, occ):
     """Generate and return the diagonal element of the Hamiltonian,
-       corresponding to determinant represented by occ_list.
+       corresponding to determinant represented by occ.
 
     Args
     ----
-    occ_list : tuple of int
+    occ : tuple of int
       Tuple holding all occupied orbitals in the determinant.
     """
-    nparticles = len(occ_list)
+    nparticles = len(occ)
 
     if nparticles == 0:
       return 0.0
@@ -581,19 +785,19 @@ class SpinlessHubbard(LatticeHamil):
     nbonds = 0
     if nparticles > 1:
       for ind in range(nparticles-1):
-        if occ_list[ind]+1 == occ_list[ind+1]:
+        if occ[ind]+1 == occ[ind+1]:
           nbonds += 1
       # Account for periodicity.
-      if occ_list[0] == 0 and occ_list[nparticles-1] == self.norbs-1:
+      if occ[0] == 0 and occ[nparticles-1] == self.norbs-1:
         nbonds += 1
 
     diag_elem = (self.U * nbonds) - (self.mu * nparticles)
     return diag_elem
 
-  def off_diag_hamil_elem(self, occ_list_1, occ_list_2, ind_ex):
+  def off_diag_hamil_elem(self, occ_1, occ_2, ind_ex):
     """Generate and return the off-diagonal element of the Hamiltonian,
-       corresponding to determinants represented by occ_list_1 and
-       occ_list_2.
+       corresponding to determinants represented by occ_1 and
+       occ_2.
 
        IMPORTANT: This function assumes that the two determinants are
        a single excitation apart, which should be checked before using
@@ -601,14 +805,14 @@ class SpinlessHubbard(LatticeHamil):
 
     Args
     ----
-    occ_list_1 : tuple of int
+    occ_1 : tuple of int
       Tuple holding all occupied orbitals in determinant 1.
-    occ_list_2 : tuple of int
+    occ_2 : tuple of int
       Tuple holding all occupied orbitals in determinant 2.
     ind_ex : tuple of int
       The two orbitals whose occupation changes in the excitation.
     """
-    par = self.parity_single(occ_list_1, occ_list_2, ind_ex)
+    par = self.parity_single(occ_1, occ_2, ind_ex)
     return -self.t * par
 
   def connected(self, ind_ex):

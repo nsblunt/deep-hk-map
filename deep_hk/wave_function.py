@@ -5,6 +5,7 @@ import numpy as np
 from scipy.sparse.linalg import eigsh
 from itertools import count
 import random
+import time
 
 class WaveFunction:
   """Class to store wave functions and calculate properties."""
@@ -122,6 +123,45 @@ class WaveFunction:
           self.rdm1_gs[site_p,site_q] += contrib
           self.rdm1_gs[site_q,site_p] += contrib
 
+  def sign_flip_fraction(self):
+    """Calculate the fraction of signs that are flipped in the ground
+       state wave function, relative to a wave function with entirely
+       fixed signs.
+
+    Returns
+    -------
+    frac_flipped : float
+      The fraction of opposite signs in the ground-state wave function.
+      If there are the same number of positive and negative signs, then
+      frac_flipped is equal to 1. If all coefficients are positive or
+      all negative, then it is equal to 0.
+    """
+
+    wf = self.coeffs[:,0]
+    num_positive = np.sum(wf > 0.0)
+    num_negative = self.ndets - num_positive
+
+    smaller_val = min(num_positive, num_negative)
+    larger_val = max(num_positive, num_negative)
+
+    frac_flipped = 2.0*smaller_val/self.ndets
+
+    return frac_flipped
+
+  def average_coeff(self):
+    """Calculate the average sign of the ground-state wave function.
+
+    Returns
+    -------
+    av_coeff : float
+      The average values of the coefficients in the ground-state wave
+      function.
+    """
+    wf = self.coeffs[:,0]
+    av_coeff = np.mean(wf)
+
+    return av_coeff
+
   def print_energies(self):
     """Print the list of energies to screen."""
     print("Energies:")
@@ -176,6 +216,11 @@ class WaveFunction:
     ----
     cum_coeffs : list of floats
       The cumulative values of the wave function amplitudes squared.
+
+    Returns
+    -------
+    det_chosen_ind : int
+      The index of the chosen determinant within the full list.
     """
     cum_total = cum_coeffs[-1]
 
@@ -200,6 +245,11 @@ class WaveFunction:
     ----
     n : int
       The number of unique configurations to be selected.
+
+    Returns
+    -------
+    inds_chosen : int
+      The indices of the chosen determinants within the full list.
     """
 
     if n > self.ndets:

@@ -17,6 +17,8 @@ class Data(Dataset):
                npot,
                input_type='potential',
                output_type='energy',
+               nonlocal_pot=False,
+               remove_sign_problem=False,
                all_configs=True,
                nconfigs_per_pot=1,
                load=False,
@@ -37,6 +39,12 @@ class Data(Dataset):
       String specifying what object is passed into the network.
     output_type : string
       String specifying what object is passed out of the network.
+    nonlocal_pot : bool
+      If True then apply a non-local potential. If False then a local
+      potential is used.
+    remove_sign_problem : bool
+      If True then after generating the Hamiltonian, make all of its
+      off-diagonal elements negative, which removes any sign problem.
     all_configs : bool
       When predicting individual coefficients as output, if True
       then every configuration is used as a data point for each
@@ -86,6 +94,9 @@ class Data(Dataset):
     self.input_type = input_type
     self.output_type = output_type
 
+    self.nonlocal_pot = nonlocal_pot
+    self.remove_sign_problem = remove_sign_problem
+
     self.inputs = None
     self.labels = None
     self.potentials = None
@@ -101,6 +112,15 @@ class Data(Dataset):
 
     self.all_configs = all_configs
 
+    # The number of inputs that define each potential
+    if self.nonlocal_pot:
+      if self.input_type == 'potential_compressed':
+        self.npot_vals = int(system.nsites*(system.nsites+1)/2)
+      else:
+        self.npot_vals = system.nsites**2
+    else:
+      self.npot_vals = system.nsites
+
     self.coeff_out = False
     if output_type == 'coeff':
       self.coeff_out = True
@@ -112,7 +132,9 @@ class Data(Dataset):
 
     self.ndata_tot = self.npot * self.nconfigs_per_pot
 
-    if 'potential' in input_type or 'density' in input_type:
+    if 'potential' in input_type:
+      self.ninput = self.npot_vals
+    if 'density' in input_type:
       self.ninput = system.nsites
     elif '1-rdm' in input_type:
       self.ninput = system.nsites**2
@@ -126,7 +148,7 @@ class Data(Dataset):
 
     if output_type == 'energy':
       self.noutput = 1
-    elif output_type == 'wave_function':
+    elif 'wave_function' in output_type:
       self.noutput = system.ndets
     elif output_type == 'potential' or output_type == 'density':
       self.noutput = system.nsites
@@ -180,12 +202,23 @@ class Data(Dataset):
 
     t1 = time.perf_counter()
 
-    for i in range(self.npot):
-      V = system.gen_rand_potential(
-          const_potential_sum,
-          potential_sum_val)
+    tot_frac_sign_flip = 0.0
+    tot_av_coeff = 0.0
 
-      system.add_potential_to_hamil(V)
+    # Loop over randomly-generated potentials
+    for i in range(self.npot):
+
+      if self.nonlocal_pot:
+        V = system.gen_rand_nonlocal_potential()
+        system.add_nonlocal_potential_to_hamil(V)
+      else:
+        V = system.gen_rand_potential(
+            const_potential_sum,
+            potential_sum_val)
+        system.add_potential_to_hamil(V)
+
+      if self.remove_sign_problem:
+        system.remove_sign_problem()
       
       wf = WaveFunction(
           nsites=system.nsites,
@@ -194,11 +227,23 @@ class Data(Dataset):
 
       wf.solve_eigenvalue(system.hamil)
 
+      frac_sign_flip = wf.sign_flip_fraction()
+      tot_frac_sign_flip += frac_sign_flip
+      av_coeff = wf.average_coeff()
+      tot_av_coeff += abs(av_coeff)
+
       self.potentials.append(V)
       self.energies.append(wf.energies[0])
 
-      if self.input_type == 'potential':
-        self.inputs[i,:] = torch.from_numpy(V)
+      if self.input_type == 'potential' or self.input_type == 'potential_compressed':
+        if self.nonlocal_pot:
+          if self.input_type == 'potential_compressed':
+            V_compressed = system.compress_potential(V)
+            self.inputs[i,:] = torch.from_numpy(V_compressed)
+          else:
+            self.inputs[i,:] = torch.from_numpy(V.flatten())
+        else:
+          self.inputs[i,:] = torch.from_numpy(V)
       elif self.input_type == 'density':
         wf.calc_gs_density()
         self.inputs[i,:] = torch.from_numpy(wf.density_gs)
@@ -209,7 +254,7 @@ class Data(Dataset):
         # If outputting a wave function coefficient
         if 'potential' in self.input_type:
           inp_array = torch.from_numpy(V)
-          inp_length = system.nsites
+          inp_length = system.npot_vals
         if 'density' in self.input_type:
           wf.calc_gs_density()
           inp_array = torch.from_numpy(wf.density_gs)
@@ -240,6 +285,8 @@ class Data(Dataset):
         self.labels[i,:] = wf.energies[0]
       elif self.output_type == 'wave_function':
         self.labels[i,:] = torch.from_numpy(wf.coeffs[:,0])
+      elif self.output_type == 'abs_wave_function':
+        self.labels[i,:] = torch.from_numpy(abs(wf.coeffs[:,0]))
       elif self.output_type == 'potential':
         self.labels[i,:] = torch.from_numpy(V)
       elif self.output_type == 'density':
@@ -255,6 +302,12 @@ class Data(Dataset):
         for j, det_ind in enumerate(det_inds):
           ind = i*self.nconfigs_per_pot + j
           self.labels[ind,0] = wf.coeffs[det_ind,0] / np.sign(wf.coeffs[0,0])
+
+    tot_frac_sign_flip /= self.npot
+    tot_av_coeff /= self.npot
+
+    print('Sign flip fraction: ', tot_frac_sign_flip)
+    print('Average coefficient: ', tot_av_coeff)
 
     t2 = time.perf_counter()
 

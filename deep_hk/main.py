@@ -4,6 +4,7 @@ from absl import app
 from absl import flags
 from deep_hk import assess, data, hamiltonian, networks, train
 import json
+import time
 
 import torch
 import torch.nn as nn
@@ -39,6 +40,11 @@ flags.DEFINE_boolean('const_potential_sum', False, 'If true, then the sum '
     'of the applied potential is a constant value (potential_sum_val).')
 flags.DEFINE_float('potential_sum_val', 0.0, 'If const_potential_sum is '
     'true, then this is the value of potential summed over all sites.')
+flags.DEFINE_boolean('nonlocal_potential', False, 'If true then apply '
+    'random nonlocal potentials. If False, use local potentials.')
+flags.DEFINE_boolean('remove_sign_problem', False, 'If true then '
+    'multiply all positive off-diagonal Hamiltonian elements by -1, '
+    'which will remove any sign problem.')
 
 # Define the parameters for data (training, validation, test).
 flags.DEFINE_integer('ntrain', 12800, 'Number of training potentials to '
@@ -78,14 +84,16 @@ flags.DEFINE_float('lr', 0.001, 'The learning rate for the optimizer.')
 flags.DEFINE_enum('net_type', 'linear', ['linear', 'conv'], 'Specify which '
     'network type to use.')
 flags.DEFINE_enum(
-    'input_type', 'potential', ['potential', 'density', '1-rdm',
-    'potential_and_config', 'potential_and_occ_str', 'potential_and_det_ind',
-    'density_and_config', 'density_and_occ_str', 'density_and_det_ind',
-    '1-rdm_and_config', '1-rdm_and_occ_str', '1-rdm_and_det_ind'],
+    'input_type', 'potential', ['potential', 'potential_compressed',
+    'density', '1-rdm', 'potential_and_config', 'potential_and_occ_str',
+    'potential_and_det_ind', 'density_and_config', 'density_and_occ_str',
+    'density_and_det_ind', '1-rdm_and_config', '1-rdm_and_occ_str',
+    '1-rdm_and_det_ind'],
     'Specify which object we pass into the network input.')
 flags.DEFINE_enum('output_type', 'energy',
     ['energy', 'wave_function', 'potential', 'density', '1-rdm', 'corr_fn',
-    'coeff'], 'Specify which object should be output by the network.')
+    'coeff', 'abs_wave_function'], 'Specify which object should be output by '
+    'the network.')
 flags.DEFINE_enum('activation_fn', 'relu',
     ['relu', 'elu', 'sigmoid', 'tanh'],
     'Define the activation function used.')
@@ -140,6 +148,7 @@ def main(argv):
     raise AssertionError('CUDA device not available.')
   device = torch.device('cuda:0' if use_cuda else 'cpu')
 
+  t1 = time.perf_counter()
   # Define and create the Hamiltonian object.
   if FLAGS.system == 'spinless_hubbard':
     system = hamiltonian.SpinlessHubbard(
@@ -150,6 +159,7 @@ def main(argv):
         nsites=FLAGS.nsites,
         fixed_nparticles=FLAGS.fixed_nparticles,
         nparticles=FLAGS.nparticles,
+        nonlocal_pot=FLAGS.nonlocal_potential,
         seed=FLAGS.seed)
   elif FLAGS.system == 'hubbard':
     system = hamiltonian.Hubbard(
@@ -162,15 +172,21 @@ def main(argv):
         nparticles=FLAGS.nparticles,
         fixed_Ms=FLAGS.fixed_Ms,
         Ms=FLAGS.Ms,
+        nonlocal_pot=FLAGS.nonlocal_potential,
         seed=FLAGS.seed)
   system.construct()
+  t2 = time.perf_counter()
+  print('Time to generate Hamiltonian: {:.6f}\n'.format(t2-t1), flush=True)
 
   # Create the data sets.
+  t1 = time.perf_counter()
   data_train = data.Data(
       system=system,
       npot=FLAGS.ntrain,
       input_type=FLAGS.input_type,
       output_type=FLAGS.output_type,
+      nonlocal_pot=FLAGS.nonlocal_potential,
+      remove_sign_problem=FLAGS.remove_sign_problem,
       all_configs=FLAGS.all_configs,
       nconfigs_per_pot=FLAGS.nconfigs_per_pot,
       load=FLAGS.load_train_data_csv,
@@ -178,13 +194,18 @@ def main(argv):
       path='data_train.csv',
       const_potential_sum=FLAGS.const_potential_sum,
       potential_sum_val=FLAGS.potential_sum_val)
+  t2 = time.perf_counter()
+  print('Time to generate training data: {:.6f}\n'.format(t2-t1), flush=True)
 
   if FLAGS.nvalidation > 0:
+    t1 = time.perf_counter()
     data_valid = data.Data(
         system=system,
         npot=FLAGS.nvalidation,
         input_type=FLAGS.input_type,
         output_type=FLAGS.output_type,
+        nonlocal_pot=FLAGS.nonlocal_potential,
+        remove_sign_problem=FLAGS.remove_sign_problem,
         all_configs=FLAGS.all_configs,
         nconfigs_per_pot=FLAGS.nconfigs_per_pot,
         load=FLAGS.load_valid_data_csv,
@@ -194,14 +215,19 @@ def main(argv):
         potential_sum_val=FLAGS.potential_sum_val)
     # Convert to a tuple for input into the train function.
     data_valid = (data_valid,)
+    t2 = time.perf_counter()
+    print('Time to generate validation data: {:.6f}\n'.format(t2-t1), flush=True)
   else:
     data_valid = None
 
+  t1 = time.perf_counter()
   data_test = data.Data(
       system=system,
       npot=FLAGS.ntest,
       input_type=FLAGS.input_type,
       output_type=FLAGS.output_type,
+      nonlocal_pot=FLAGS.nonlocal_potential,
+      remove_sign_problem=FLAGS.remove_sign_problem,
       all_configs=FLAGS.all_configs,
       nconfigs_per_pot=FLAGS.nconfigs_per_pot,
       load=FLAGS.load_test_data_csv,
@@ -209,9 +235,13 @@ def main(argv):
       path='data_test.csv',
       const_potential_sum=FLAGS.const_potential_sum,
       potential_sum_val=FLAGS.potential_sum_val)
+  t2 = time.perf_counter()
+  print('Time to generate test data: {:.6f}\n'.format(t2-t1), flush=True)
 
   ninput = data_train.ninput
   noutput = data_train.noutput
+
+  wf_output = 'wave_function' in FLAGS.output_type
 
   # Fully-connected networks.
   if FLAGS.net_type == 'linear':
@@ -220,7 +250,7 @@ def main(argv):
         ninput,
         layer_widths,
         noutput,
-        wf_output = FLAGS.output_type == 'wave_function')
+        wf_output=wf_output)
     net = networks.LinearNet(
         layers_list,
         FLAGS.activation_fn)
@@ -245,7 +275,7 @@ def main(argv):
     net.load(FLAGS.load_path)
 
   # Define the loss function.
-  if FLAGS.output_type == 'wave_function':
+  if wf_output:
     criterion = train.Infidelity()
   else:
     criterion = nn.L1Loss()
@@ -278,16 +308,16 @@ def main(argv):
       criterion,
       device=device)
 
-  assess.assess_predicted_energies_from_coeffs(
-      net,
-      data_test,
-      criterion,
-      device=device)
+  #assess.assess_predicted_energies_from_coeffs(
+  #    net,
+  #    data_test,
+  #    criterion,
+  #    device=device)
 
-  assess.calc_infidelities_from_coeffs(
-      net,
-      data_test,
-      device=device)
+  #assess.calc_infidelities_from_coeffs(
+  #    net,
+  #    data_test,
+  #    device=device)
 
   #assess.assess_predicted_energies_from_wf(
   #    net,
