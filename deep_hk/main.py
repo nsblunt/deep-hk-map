@@ -46,7 +46,7 @@ flags.DEFINE_boolean('remove_sign_problem', False, 'If true then '
     'multiply all positive off-diagonal Hamiltonian elements by -1, '
     'which will remove any sign problem.')
 flags.DEFINE_enum(
-    'lattice_type', '1d', ['1d', 'square'],
+    'lattice_type', '1d', ['1d', 'square', 'from_file'],
     'Specify the connectivity of the lattice.')
 
 # Define the parameters for data (training, validation, test).

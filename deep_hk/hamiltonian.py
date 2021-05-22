@@ -416,6 +416,26 @@ class LatticeHamil(metaclass=abc.ABCMeta):
           ind_b = i_2*width + j_2
           self.connected_arr[ind_a,ind_b] = 1
 
+    elif self.lattice_type == 'from_file':
+      f = open('connected.txt')
+      for line in f:
+        if '#' not in line:
+          inds = line.split()
+          if len(inds) == 0:
+            # Empty line
+            continue
+          elif len(inds) == 2:
+            i = int(inds[0])
+            j = int(inds[1])
+            if i >= self.nsites or j >= self.nsites:
+              raise ValueError('Site label in connected.txt is higher '
+                  'than the maximum lattice site index (zero-indexed).')
+            self.connected_arr[i,j] = 1
+          else:
+            raise ValueError('connected.txt should consist of parirs of'
+                'integers, each on one line of the file.')
+      f.close()
+
   def connected(self, ind_ex):
     """Return true if two orbitals are connected on the lattice.
 
