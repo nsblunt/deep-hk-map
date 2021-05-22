@@ -154,6 +154,8 @@ class LatticeHamil(metaclass=abc.ABCMeta):
       Defines the connectivity of the lattice. If connected_arr[i,j] is
       equal to 1 then sites i and j are connected as nearest neighbours,
       otherwise this element is equal to 0 and they are not connected.
+    connected_pairs : list of (tuple of two ints)
+      A list of every pair of sites which are connected in the lattice.
     ndets : int
       The total number of determinants.
     hamil : scipy csr_matrix
@@ -191,6 +193,7 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     self.configs = None
     self.ndets = None
     self.connected_arr = None
+    self.connected_pairs = None
 
     self.hamil = None
     self.hamil_diag = None
@@ -431,10 +434,23 @@ class LatticeHamil(metaclass=abc.ABCMeta):
               raise ValueError('Site label in connected.txt is higher '
                   'than the maximum lattice site index (zero-indexed).')
             self.connected_arr[i,j] = 1
+            self.connected_arr[j,i] = 1
           else:
             raise ValueError('connected.txt should consist of parirs of'
                 'integers, each on one line of the file.')
       f.close()
+
+    self.make_connected_pairs()
+
+  def make_connected_pairs(self):
+    """Make the connected_pairs array, which is a list of pairs of
+       connected sites on the lattice."""
+    self.connected_pairs = []
+
+    for i in range(self.nsites):
+      for j in range(i):
+        if self.connected_arr[i,j] == 1:
+          self.connected_pairs.append((j,i))
 
   def connected(self, ind_ex):
     """Return true if two orbitals are connected on the lattice.
@@ -870,12 +886,12 @@ class SpinlessHubbard(LatticeHamil):
     # Count the number of 1-1 bonds.
     nbonds = 0
     if nparticles > 1:
-      for ind in range(nparticles-1):
-        if occ[ind]+1 == occ[ind+1]:
+      # Loop over all connected pairs of sites
+      for pair in self.connected_pairs:
+        site_1 = pair[0]
+        site_2 = pair[1]
+        if site_1 in occ and site_2 in occ:
           nbonds += 1
-      # Account for periodicity.
-      if occ[0] == 0 and occ[nparticles-1] == self.norbs-1:
-        nbonds += 1
 
     diag_elem = (self.U * nbonds) - (self.mu * nparticles)
     return diag_elem
