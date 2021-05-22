@@ -7,6 +7,7 @@ import itertools
 import numpy as np
 import random
 from scipy.sparse import csr_matrix
+from math import isqrt
 
 def generate_all_dets(norbs):
   """Generate all determinants with all combinations of nparticles (the
@@ -93,6 +94,7 @@ class LatticeHamil(metaclass=abc.ABCMeta):
                fixed_nparticles,
                nparticles,
                nonlocal_pot=False,
+               lattice_type='1d',
                seed=7):
     """Initialises an object for the Hamiltonian of a lattice model.
 
@@ -122,6 +124,12 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     nparticles : int
       The number of particles. This is only used if fixed_nparticles
       is True.
+    nonlocal_pot : bool
+      If True then the system is set up to allow non-local potentials
+      to be applied. If False, then it is assumed local potentials will
+      be used.
+    lattice_type : string
+      String specifying the lattice type, i.e. '1d' or 'square'.
     seed : int
       Seed for the random number generator, used to generate random
       potentials.
@@ -142,6 +150,10 @@ class LatticeHamil(metaclass=abc.ABCMeta):
       integers, where 0 represents that the orbital is unoccupied, 1
       that it is occupied. This is only created if generate_configs
       is called.
+    connected_arr : numpy integer ndarray of size (nsites,nsites)
+      Defines the connectivity of the lattice. If connected_arr[i,j] is
+      equal to 1 then sites i and j are connected as nearest neighbours,
+      otherwise this element is equal to 0 and they are not connected.
     ndets : int
       The total number of determinants.
     hamil : scipy csr_matrix
@@ -170,14 +182,15 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     self.Ms = Ms
     self.fixed_nparticles = fixed_nparticles
     self.nparticles = nparticles
-    self.seed = seed
-
     self.nonlocal_pot = nonlocal_pot
+    self.lattice_type = lattice_type
+    self.seed = seed
 
     self.dets = None
     self.dets_dict = None
     self.configs = None
     self.ndets = None
+    self.connected_arr = None
 
     self.hamil = None
     self.hamil_diag = None
@@ -207,6 +220,7 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     """Construct the Hamiltonian, which is a sparse scipy CSR matrix."""
 
     self.generate_dets()
+    self.make_connected()
 
     self.hamil_diag = np.zeros(self.ndets, dtype=float)
 
@@ -358,7 +372,70 @@ class LatticeHamil(metaclass=abc.ABCMeta):
       The two orbitals whose occupation changes in the excitation.
     """
 
-  @abc.abstractmethod
+  def make_connected(self):
+    """Construct the self.connected array, which defines which
+       lattice sites are nearest neighbours.
+    """
+
+    self.connected_arr = np.zeros((self.nsites,self.nsites), dtype=int)
+
+    if self.lattice_type == '1d':
+      for i in range(self.nsites):
+        j = (i+1)%self.nsites
+        self.connected_arr[i,j] = 1
+
+        j = (i-1)%self.nsites
+        self.connected_arr[i,j] = 1
+
+    elif self.lattice_type == 'square':
+      width = isqrt(self.nsites)
+      if width**2 != self.nsites:
+        raise ValueError('Number of lattice sites is not a square number.')
+
+      for i_1 in range(width):
+        for j_1 in range(width):
+          ind_a = i_1*width + j_1
+
+          i_2 = (i_1+1)%width
+          j_2 = j_1
+          ind_b = i_2*width + j_2
+          self.connected_arr[ind_a,ind_b] = 1
+
+          i_2 = (i_1-1)%width
+          j_2 = j_1
+          ind_b = i_2*width + j_2
+          self.connected_arr[ind_a,ind_b] = 1
+
+          i_2 = i_1
+          j_2 = (j_1+1)%width
+          ind_b = i_2*width + j_2
+          self.connected_arr[ind_a,ind_b] = 1
+
+          i_2 = i_1
+          j_2 = (j_1-1)%width
+          ind_b = i_2*width + j_2
+          self.connected_arr[ind_a,ind_b] = 1
+
+    elif self.lattice_type == 'from_file':
+      f = open('connected.txt')
+      for line in f:
+        if '#' not in line:
+          inds = line.split()
+          if len(inds) == 0:
+            # Empty line
+            continue
+          elif len(inds) == 2:
+            i = int(inds[0])
+            j = int(inds[1])
+            if i >= self.nsites or j >= self.nsites:
+              raise ValueError('Site label in connected.txt is higher '
+                  'than the maximum lattice site index (zero-indexed).')
+            self.connected_arr[i,j] = 1
+          else:
+            raise ValueError('connected.txt should consist of parirs of'
+                'integers, each on one line of the file.')
+      f.close()
+
   def connected(self, ind_ex):
     """Return true if two orbitals are connected on the lattice.
 
@@ -366,7 +443,21 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     ----
     ind_ex : tuple of int
       The two orbitals whose occupation changes in the excitation.
+
+    Returns
+    -------
+    nearest_neighbours : bool
+      True is the two orbitals correspond to sites which are
+      nearest neighbours on the lattice, as defined by the
+      self.connected array.
     """
+
+    site_1 = ind_ex[0] // self.nspin
+    site_2 = ind_ex[1] // self.nspin
+
+    nearest_neighbours = self.connected_arr[site_1,site_2] == 1
+
+    return nearest_neighbours
 
   def parity_single(self, occ_i, occ_j, ind_ex):
     """Calculate the parity (+1 or -1) for the Hamiltonian element
@@ -578,6 +669,7 @@ class Hubbard(LatticeHamil):
                fixed_Ms=True,
                Ms=0,
                nonlocal_pot=False,
+               lattice_type='1d',
                seed=7):
     """Initialises an object for the Hamiltonian of a Hubbard model.
 
@@ -604,6 +696,7 @@ class Hubbard(LatticeHamil):
         fixed_nparticles=fixed_nparticles,
         nparticles=nparticles,
         nonlocal_pot=nonlocal_pot,
+        lattice_type=lattice_type,
         seed=seed)
 
   def generate_dets(self):
@@ -681,29 +774,6 @@ class Hubbard(LatticeHamil):
     par = self.parity_single(occ_1, occ_2, ind_ex)
     return -self.t * par
 
-  def connected(self, ind_ex):
-    """Return true if two orbitals are connected on the lattice. Two
-       orbitals are connected if they are on neighbouring lattice sites
-       and also have the same spin.
-
-    Args
-    ----
-    ind_ex : tuple of int
-      The two orbitals whose occupation changes in the excitation.
-    """
-    # Orbitals are connected if nearest neighbours and have the same
-    # spin. The spin ordering is (alpha, beta, alpha, beta, ...).
-    if ind_ex[1] == ind_ex[0]+2:
-      return True
-    elif ind_ex[0] == 0 and ind_ex[1] == self.norbs-2:
-      # periodicity (alpha, alpha)
-      return True
-    elif ind_ex[0] == 1 and ind_ex[1] == self.norbs-1:
-      # periodicity (beta, beta)
-      return True
-    else:
-      return False
-
 
 class SpinlessHubbard(LatticeHamil):
   """Hamiltonian for a spinless Hubbard model."""
@@ -717,6 +787,7 @@ class SpinlessHubbard(LatticeHamil):
                fixed_nparticles,
                nparticles,
                nonlocal_pot=False,
+               lattice_type='1d',
                seed=7):
     """Initialises an object for the Hamiltonian of a spinless Hubbard
        model.
@@ -744,6 +815,7 @@ class SpinlessHubbard(LatticeHamil):
         fixed_nparticles=fixed_nparticles,
         nparticles=nparticles,
         nonlocal_pot=nonlocal_pot,
+        lattice_type=lattice_type,
         seed=seed)
 
   def generate_dets(self):
@@ -814,22 +886,6 @@ class SpinlessHubbard(LatticeHamil):
     """
     par = self.parity_single(occ_1, occ_2, ind_ex)
     return -self.t * par
-
-  def connected(self, ind_ex):
-    """Return true if two orbitals are connected on the lattice.
-
-    Args
-    ----
-    ind_ex : tuple of int
-      The two orbitals whose occupation changes in the excitation.
-    """
-    # Sites/orbitals are connected if nearest neighbours.
-    if ind_ex[1] == ind_ex[0]+1:
-      return True
-    elif ind_ex[0] == 0 and ind_ex[1] == self.norbs-1: # (periodicity)
-      return True
-    else:
-      return False
 
   def generate_configs(self):
     """Generate the configurations, stored as tuples of 0's and 1's,

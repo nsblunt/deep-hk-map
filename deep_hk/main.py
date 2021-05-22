@@ -45,6 +45,9 @@ flags.DEFINE_boolean('nonlocal_potential', False, 'If true then apply '
 flags.DEFINE_boolean('remove_sign_problem', False, 'If true then '
     'multiply all positive off-diagonal Hamiltonian elements by -1, '
     'which will remove any sign problem.')
+flags.DEFINE_enum(
+    'lattice_type', '1d', ['1d', 'square', 'from_file'],
+    'Specify the connectivity of the lattice.')
 
 # Define the parameters for data (training, validation, test).
 flags.DEFINE_integer('ntrain', 12800, 'Number of training potentials to '
@@ -160,6 +163,7 @@ def main(argv):
         fixed_nparticles=FLAGS.fixed_nparticles,
         nparticles=FLAGS.nparticles,
         nonlocal_pot=FLAGS.nonlocal_potential,
+        lattice_type=FLAGS.lattice_type,
         seed=FLAGS.seed)
   elif FLAGS.system == 'hubbard':
     system = hamiltonian.Hubbard(
@@ -173,6 +177,7 @@ def main(argv):
         fixed_Ms=FLAGS.fixed_Ms,
         Ms=FLAGS.Ms,
         nonlocal_pot=FLAGS.nonlocal_potential,
+        lattice_type=FLAGS.lattice_type,
         seed=FLAGS.seed)
   system.construct()
   t2 = time.perf_counter()
