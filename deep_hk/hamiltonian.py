@@ -362,8 +362,10 @@ class LatticeHamil(metaclass=abc.ABCMeta):
        occ_2.
 
        IMPORTANT: This function assumes that the two determinants are
-       a single excitation apart, which should be checked before using
-       this. ind_ex holds the two orbitals involved in the excitation.
+       a single excitation apart, and that the orbitals/sites are
+       connected, which should be checked before using this. This
+       guarantees that the Hamiltonian element is non-zero. ind_ex
+       holds the two orbitals involved in the excitation.
 
     Args
     ----
@@ -789,8 +791,10 @@ class Hubbard(LatticeHamil):
        occ_2.
 
        IMPORTANT: This function assumes that the two determinants are
-       a single excitation apart, which should be checked before using
-       this. ind_ex holds the two orbitals involved in the excitation.
+       a single excitation apart, and that the orbitals/sites are
+       connected, which should be checked before using this. This
+       guarantees that the Hamiltonian element is non-zero. ind_ex
+       holds the two orbitals involved in the excitation.
 
     Args
     ----
@@ -902,8 +906,10 @@ class SpinlessHubbard(LatticeHamil):
        occ_2.
 
        IMPORTANT: This function assumes that the two determinants are
-       a single excitation apart, which should be checked before using
-       this. ind_ex holds the two orbitals involved in the excitation.
+       a single excitation apart, and that the orbitals/sites are
+       connected, which should be checked before using this. This
+       guarantees that the Hamiltonian element is non-zero. ind_ex
+       holds the two orbitals involved in the excitation.
 
     Args
     ----
@@ -916,3 +922,130 @@ class SpinlessHubbard(LatticeHamil):
     """
     par = self.parity_single(occ_1, occ_2, ind_ex)
     return -self.t * par
+
+
+class Heisenberg(LatticeHamil):
+  """Hamiltonian for a Heisenberg model."""
+
+  def __init__(self,
+               J,
+               max_V,
+               nsites,
+               fixed_Ms=True,
+               Ms=0,
+               lattice_type='1d',
+               seed=7):
+    """Initialises an object for the Hamiltonian of a spinless Hubbard
+       model.
+
+    Args
+    ----
+    J : float
+      The Heisenberg model coupling constant.
+
+    Other arguments and attributes are defined in the base class
+    (LatticeHamil) docstring.
+    """
+    self.J = J
+
+    if nsites%2 != Ms%2:
+      raise ValueError('Combination of nsites and Ms is not possible.')
+
+    # In the Heisenberg model, an occupied orbital actually refers to
+    # an up spin. An unoccupied orbital refers to a down spin. So the
+    # value nparticles is actually the number of up spins, (nsites+Ms)/2.
+    # And the number of down spins is (nsites-Ms)/2. Because of this,
+    # fixed_nparticles is the same as fixed_Ms in the Heisenberg model.
+
+    # Note that nsites+Ms is always even, so there is no rounding.
+    nparticles = int((nsites+Ms)/2)
+    # For now, we only allow a fixed Ms value.
+    fixed_nparticles = True
+
+    super().__init__(
+        mu=0,
+        max_V=max_V,
+        nsites=nsites,
+        nspin=1,
+        fixed_Ms=fixed_Ms,
+        Ms=Ms,
+        fixed_nparticles=fixed_nparticles,
+        nparticles=nparticles,
+        nonlocal_pot=False,
+        lattice_type=lattice_type,
+        seed=seed)
+
+  def generate_dets(self):
+    """Generate the full list of determinants (spin configurations)
+       that span the space."""
+    self.dets = []
+
+    if self.fixed_nparticles:
+      # Generate all configurations with nparticles up spins in
+      # nsites lattice sites.
+      r = itertools.combinations(range(self.nsites), self.nparticles)
+      for item in r:
+        self.dets.append(item)
+    else:
+      raise NotImplementedError('The Heisenberg model is not implemented' 
+          'with varying Ms value yet.')
+
+    self.ndets = len(self.dets)
+
+    # Generate dictionary to allow us to efficiently find the index
+    # of a given determinant in the full list.
+    self.dets_dict = {}
+    for i, det_i in enumerate(self.dets):
+      self.dets_dict[det_i] = i
+
+  def diag_hamil_elem(self, occ):
+    """Generate and return the diagonal element of the Hamiltonian,
+       corresponding to determinant represented by occ.
+
+    Args
+    ----
+    occ : tuple of int
+      Tuple holding all the lattice sites which are spin up.
+    """
+    # Loop over all pairs of neighbouring spins, and calculate how
+    # many are parallel (np) and antiparallel (na). The total diagonal
+    # element is J*(np-na)/4.
+    np = 0
+    na = 0
+
+    # Loop over all connected pairs of sites
+    for pair in self.connected_pairs:
+      site_1 = pair[0]
+      site_2 = pair[1]
+      site_1_up = site_1 in occ
+      site_2_up = site_2 in occ
+      if site_1_up and site_2_up:
+        np += 1
+      elif not site_1_up and not site_2_up:
+        np += 1
+      else:
+        na += 1
+
+    diag_elem = self.J * (np - na) / 4.0
+    return diag_elem
+
+  def off_diag_hamil_elem(self, occ_1, occ_2, ind_ex):
+    """Return the off-diagonal element of the Heisenberg Hamiltonain.
+
+       IMPORTANT: This function assumes that the two configurations are
+       a single excitation apart, and that the corresponding sites
+       involved in the excitation are connected. This means that the
+       off-diagonal element is guaranteed to be non-zero. In the
+       Heisenberg model, all non-zero off-diagonal elements are J/2, so
+       this is simple.
+
+    Args
+    ----
+    occ_1 : tuple of int
+      Tuple holding all up-spin sites in configuration 1.
+    occ_2 : tuple of int
+      Tuple holding all up-spin sites in configuration 2.
+    ind_ex : tuple of int
+      The two orbitals whose occupation changes in the excitation.
+    """
+    return self.J/2.0
