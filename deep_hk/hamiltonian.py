@@ -630,6 +630,20 @@ class LatticeHamil(metaclass=abc.ABCMeta):
         raise ValueError('Greater than single excitation found in '
             'non-local potential calculation.')
 
+  def generate_configs(self):
+    """Generate the configurations, stored as tuples of 0's and 1's,
+       where 0 indicates that an orbital is unoccupied, 1 that it is
+       occupied.
+    """
+
+    self.configs = []
+
+    for det in self.dets:
+      config = np.zeros(self.norbs, dtype=float)
+      for orb in det:
+        config[orb] = 1
+      self.configs.append(config)
+
   def calc_energy(self, wf, V):
     """Calculate the expectation value of the Hamiltonian, with respect
        to the provided wave function.
@@ -886,17 +900,3 @@ class SpinlessHubbard(LatticeHamil):
     """
     par = self.parity_single(occ_1, occ_2, ind_ex)
     return -self.t * par
-
-  def generate_configs(self):
-    """Generate the configurations, stored as tuples of 0's and 1's,
-       where 0 indicates that an orbital is unoccupied, 1 that it is
-       occupied.
-    """
-
-    self.configs = []
-
-    for det in self.dets:
-      config = np.zeros(self.norbs, dtype=float)
-      for orb in det:
-        config[orb] = 1
-      self.configs.append(config)
