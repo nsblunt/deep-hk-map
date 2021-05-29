@@ -7,7 +7,6 @@ import itertools
 import numpy as np
 import random
 from scipy.sparse import csr_matrix
-from math import isqrt
 
 def generate_all_dets(norbs):
   """Generate all determinants with all combinations of nparticles (the
@@ -80,6 +79,26 @@ def generate_all_dets_fixed_n_and_ms(nsites, nparticles, Ms):
 
   return dets
 
+def isqrt(n):
+  """Calculate the floor of the square root of n, using Newton's
+     method.
+
+  Args
+  ----
+  n : int
+    Integer to use.
+
+  Returns
+  -------
+  n_isqrt : int
+    Floor of the square root of n.
+  """
+  n_isqrt = n
+  y = (n_isqrt + 1) // 2
+  while y < n_isqrt:
+    n_isqrt = y
+    y = (n_isqrt + n // n_isqrt) // 2
+  return n_isqrt
 
 class LatticeHamil(metaclass=abc.ABCMeta):
   """Abstract base class for the Hamiltonian of a lattice model."""
