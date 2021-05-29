@@ -19,8 +19,8 @@ flags.DEFINE_enum('device', 'cpu', ['cpu', 'gpu'], 'Define whether '
 
 # Define the system.
 flags.DEFINE_enum(
-    'system', 'spinless_hubbard', ['spinless_hubbard', 'hubbard'],
-    'Define the type of system being studied.')
+    'system', 'spinless_hubbard', ['spinless_hubbard', 'hubbard',
+    'heisenberg'], 'Define the type of system being studied.')
 flags.DEFINE_integer('nsites', 4, 'Number of lattice sites.')
 flags.DEFINE_integer('nparticles', 2, 'Number of particles.')
 flags.DEFINE_boolean('fixed_Ms', True, 'If true then use a fixed-Ms '
@@ -29,6 +29,7 @@ flags.DEFINE_integer('Ms', 0, 'Total spin of the system (in units of '
     'electron spin). This is not used in the case of spinless systems.')
 flags.DEFINE_float('U', 1.0, 'Parameter U in the Hubbard model.')
 flags.DEFINE_float('t', 1.0, 'Parameter t in the Hubbard model.')
+flags.DEFINE_float('J', 1.0, 'Parameter J in the Heisenberg model.')
 flags.DEFINE_float('mu', 0.0, 'Chemical potential parameter.')
 flags.DEFINE_float('max_potential', 0.5, 'The maximum absolute value of '
     'random potentials applied on any given site.')
@@ -177,6 +178,15 @@ def main(argv):
         fixed_Ms=FLAGS.fixed_Ms,
         Ms=FLAGS.Ms,
         nonlocal_pot=FLAGS.nonlocal_potential,
+        lattice_type=FLAGS.lattice_type,
+        seed=FLAGS.seed)
+  elif FLAGS.system == 'heisenberg':
+    system = hamiltonian.Heisenberg(
+        J=FLAGS.J,
+        max_V=FLAGS.max_potential,
+        nsites=FLAGS.nsites,
+        fixed_Ms=FLAGS.fixed_Ms,
+        Ms=FLAGS.Ms,
         lattice_type=FLAGS.lattice_type,
         seed=FLAGS.seed)
   system.construct()
