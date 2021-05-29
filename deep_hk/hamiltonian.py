@@ -588,6 +588,7 @@ class LatticeHamil(metaclass=abc.ABCMeta):
 
     return V_compressed
 
+  @abc.abstractmethod
   def add_potential_to_hamil(self, V):
     """Add the potential V into the Hamiltonian object, hamil.
 
@@ -596,14 +597,6 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     V : numpy ndarray of size (nsites)
       An external potential.
     """
-    for i in range(self.ndets):
-      diag_pos = self.diag_pos[i]
-      self.hamil.data[diag_pos] = self.hamil_diag[i]
-      # Loop over all occupied sites in determinant i.
-      for orb in self.dets[i]:
-        # Convert orbital index to site index.
-        site = orb // self.nspin
-        self.hamil.data[diag_pos] += V[site]
 
   def add_nonlocal_potential_to_hamil(self, V):
     """Add a non-local potential V into the Hamiltonian object, hamil.
@@ -653,7 +646,6 @@ class LatticeHamil(metaclass=abc.ABCMeta):
        where 0 indicates that an orbital is unoccupied, 1 that it is
        occupied.
     """
-
     self.configs = []
 
     for det in self.dets:
@@ -808,6 +800,23 @@ class Hubbard(LatticeHamil):
     par = self.parity_single(occ_1, occ_2, ind_ex)
     return -self.t * par
 
+  def add_potential_to_hamil(self, V):
+    """Add the potential V into the Hamiltonian object, hamil.
+
+    Args
+    ----
+    V : numpy ndarray of size (nsites)
+      An external potential.
+    """
+    for i in range(self.ndets):
+      diag_pos = self.diag_pos[i]
+      self.hamil.data[diag_pos] = self.hamil_diag[i]
+      # Loop over all occupied sites in determinant i.
+      for orb in self.dets[i]:
+        # Convert orbital index to site index.
+        site = orb // 2
+        self.hamil.data[diag_pos] += V[site]
+
 
 class SpinlessHubbard(LatticeHamil):
   """Hamiltonian for a spinless Hubbard model."""
@@ -922,6 +931,21 @@ class SpinlessHubbard(LatticeHamil):
     """
     par = self.parity_single(occ_1, occ_2, ind_ex)
     return -self.t * par
+
+  def add_potential_to_hamil(self, V):
+    """Add the potential V into the Hamiltonian object, hamil.
+
+    Args
+    ----
+    V : numpy ndarray of size (nsites)
+      An external potential.
+    """
+    for i in range(self.ndets):
+      diag_pos = self.diag_pos[i]
+      self.hamil.data[diag_pos] = self.hamil_diag[i]
+      # Loop over all occupied sites in determinant i.
+      for site in self.dets[i]:
+        self.hamil.data[diag_pos] += V[site]
 
 
 class Heisenberg(LatticeHamil):
@@ -1049,3 +1073,28 @@ class Heisenberg(LatticeHamil):
       The two orbitals whose occupation changes in the excitation.
     """
     return self.J/2.0
+
+  def add_potential_to_hamil(self, V):
+    """Add the potential V into the Hamiltonian object, hamil.
+       This potential V is the magnetic field strength (in the
+       z direction), i.e. V=B.
+
+    Args
+    ----
+    V : numpy ndarray of size (nsites)
+      An external potential.
+    """
+    all_sites = range(self.norbs)
+
+    for i in range(self.ndets):
+      diag_pos = self.diag_pos[i]
+      self.hamil.data[diag_pos] = self.hamil_diag[i]
+
+      # Loop over all spin-up sites in the configuration.
+      for site in self.dets[i]:
+        self.hamil.data[diag_pos] += V[site]/2.0
+
+      # Loop over all spin-down sites in the configuration.
+      spin_down_sites = set(all_sites).difference(set(self.dets[i]))
+      for site in spin_down_sites:
+        self.hamil.data[diag_pos] += -V[site]/2.0
