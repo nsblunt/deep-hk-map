@@ -169,12 +169,13 @@ class LatticeHamil(metaclass=abc.ABCMeta):
       integers, where 0 represents that the orbital is unoccupied, 1
       that it is occupied. This is only created if generate_configs
       is called.
-    connected_arr : numpy integer ndarray of size (nsites,nsites)
-      Defines the connectivity of the lattice. If connected_arr[i,j] is
+    nearest_arr : numpy integer ndarray of size (nsites,nsites)
+      Defines the connectivity of the lattice. If nearest_arr[i,j] is
       equal to 1 then sites i and j are connected as nearest neighbours,
       otherwise this element is equal to 0 and they are not connected.
-    connected_pairs : list of (tuple of two ints)
-      A list of every pair of sites which are connected in the lattice.
+    nearest_pairs : list of (tuple of two ints)
+      A list of every pair of sites which are nearest neighbours on the
+      lattice.
     ndets : int
       The total number of determinants.
     hamil : scipy csr_matrix
@@ -211,8 +212,8 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     self.dets_dict = None
     self.configs = None
     self.ndets = None
-    self.connected_arr = None
-    self.connected_pairs = None
+    self.nearest_arr = None
+    self.nearest_pairs = None
 
     self.hamil = None
     self.hamil_diag = None
@@ -242,7 +243,7 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     """Construct the Hamiltonian, which is a sparse scipy CSR matrix."""
 
     self.generate_dets()
-    self.make_connected()
+    self.make_nearest_arr()
 
     self.hamil_diag = np.zeros(self.ndets, dtype=float)
 
@@ -396,20 +397,20 @@ class LatticeHamil(metaclass=abc.ABCMeta):
       The two orbitals whose occupation changes in the excitation.
     """
 
-  def make_connected(self):
-    """Construct the self.connected array, which defines which
+  def make_nearest_arr(self):
+    """Construct the self.nearest_arr array, which defines which
        lattice sites are nearest neighbours.
     """
 
-    self.connected_arr = np.zeros((self.nsites,self.nsites), dtype=int)
+    self.nearest_arr = np.zeros((self.nsites,self.nsites), dtype=int)
 
     if self.lattice_type == '1d':
       for i in range(self.nsites):
         j = (i+1)%self.nsites
-        self.connected_arr[i,j] = 1
+        self.nearest_arr[i,j] = 1
 
         j = (i-1)%self.nsites
-        self.connected_arr[i,j] = 1
+        self.nearest_arr[i,j] = 1
 
     elif self.lattice_type == 'square':
       width = isqrt(self.nsites)
@@ -423,25 +424,25 @@ class LatticeHamil(metaclass=abc.ABCMeta):
           i_2 = (i_1+1)%width
           j_2 = j_1
           ind_b = i_2*width + j_2
-          self.connected_arr[ind_a,ind_b] = 1
+          self.nearest_arr[ind_a,ind_b] = 1
 
           i_2 = (i_1-1)%width
           j_2 = j_1
           ind_b = i_2*width + j_2
-          self.connected_arr[ind_a,ind_b] = 1
+          self.nearest_arr[ind_a,ind_b] = 1
 
           i_2 = i_1
           j_2 = (j_1+1)%width
           ind_b = i_2*width + j_2
-          self.connected_arr[ind_a,ind_b] = 1
+          self.nearest_arr[ind_a,ind_b] = 1
 
           i_2 = i_1
           j_2 = (j_1-1)%width
           ind_b = i_2*width + j_2
-          self.connected_arr[ind_a,ind_b] = 1
+          self.nearest_arr[ind_a,ind_b] = 1
 
     elif self.lattice_type == 'from_file':
-      f = open('connected.txt')
+      f = open('nearest.txt')
       for line in f:
         if '#' not in line:
           inds = line.split()
@@ -452,29 +453,52 @@ class LatticeHamil(metaclass=abc.ABCMeta):
             i = int(inds[0])
             j = int(inds[1])
             if i >= self.nsites or j >= self.nsites:
-              raise ValueError('Site label in connected.txt is higher '
+              raise ValueError('Site label in nearest.txt is higher '
                   'than the maximum lattice site index (zero-indexed).')
-            self.connected_arr[i,j] = 1
-            self.connected_arr[j,i] = 1
+            self.nearest_arr[i,j] = 1
+            self.nearest_arr[j,i] = 1
           else:
-            raise ValueError('connected.txt should consist of parirs of'
+            raise ValueError('nearest.txt should consist of parirs of'
                 'integers, each on one line of the file.')
       f.close()
 
-    self.make_connected_pairs()
+    self.make_nearest_pairs()
 
-  def make_connected_pairs(self):
-    """Make the connected_pairs array, which is a list of pairs of
-       connected sites on the lattice."""
-    self.connected_pairs = []
+  def make_nearest_pairs(self):
+    """Make the nearest_pairs array, which is a list of pairs of
+       nearest neighbours on the lattice."""
+    self.nearest_pairs = []
 
     for i in range(self.nsites):
       for j in range(i):
-        if self.connected_arr[i,j] == 1:
-          self.connected_pairs.append((j,i))
+        if self.nearest_arr[i,j] == 1:
+          self.nearest_pairs.append((j,i))
 
   def connected(self, ind_ex):
-    """Return true if two orbitals are connected on the lattice.
+    """Return true if two orbitals are connected directly within
+       the definition of the Hamiltonian used. This will be
+       nearest neighbours for most models, but could also include
+       next-nearest neighbours, for exmaple in the J1-J2 model.
+
+    Args
+    ----
+    ind_ex : tuple of int
+      The two orbitals whose occupation changes in the excitation.
+
+    Returns
+    -------
+    connected : bool
+      True if the two orbitals correspond to sites which are
+      connected within the Hamiltonian.
+    """
+
+    connected_orbs = self.nearest_neighbours(ind_ex)
+
+    return connected_orbs
+
+  def nearest_neighbours(self, ind_ex):
+    """Return true if two orbitals are nearest neighbours on the
+       lattice.
 
     Args
     ----
@@ -484,15 +508,15 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     Returns
     -------
     nearest_neighbours : bool
-      True is the two orbitals correspond to sites which are
+      True if the two orbitals correspond to sites which are
       nearest neighbours on the lattice, as defined by the
-      self.connected array.
+      self.nearest_arr array.
     """
 
     site_1 = ind_ex[0] // self.nspin
     site_2 = ind_ex[1] // self.nspin
 
-    nearest_neighbours = self.connected_arr[site_1,site_2] == 1
+    nearest_neighbours = self.nearest_arr[site_1,site_2] == 1
 
     return nearest_neighbours
 
@@ -918,8 +942,8 @@ class SpinlessHubbard(LatticeHamil):
     # Count the number of 1-1 bonds.
     nbonds = 0
     if nparticles > 1:
-      # Loop over all connected pairs of sites
-      for pair in self.connected_pairs:
+      # Loop over all pairs of nearest neighbours
+      for pair in self.nearest_pairs:
         site_1 = pair[0]
         site_2 = pair[1]
         if site_1 in occ and site_2 in occ:
@@ -1056,8 +1080,8 @@ class Heisenberg(LatticeHamil):
     np = 0
     na = 0
 
-    # Loop over all connected pairs of sites
-    for pair in self.connected_pairs:
+    # Loop over all pairs of nearest neighbours
+    for pair in self.nearest_pairs:
       site_1 = pair[0]
       site_2 = pair[1]
       site_1_up = site_1 in occ
