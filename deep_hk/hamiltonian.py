@@ -145,7 +145,7 @@ class LatticeHamil(metaclass=abc.ABCMeta):
       The number of particles. This is only used if fixed_nparticles
       is True.
     next_nearest : bool
-      If True, then the model also requires next-nearest connections
+      If True, then the model also uses next-nearest connections.
     nonlocal_pot : bool
       If True then the system is set up to allow non-local potentials
       to be applied. If False, then it is assumed local potentials will
@@ -180,9 +180,9 @@ class LatticeHamil(metaclass=abc.ABCMeta):
       A list of every pair of sites which are nearest neighbours on the
       lattice.
     next_nearest_arr : numpy integer ndarray of size (nsites,nsites)
-      As for nearest_arr, but with next-nearest neighbours
+      As for nearest_arr, but with next-nearest neighbours.
     next_nearest_pairs : list of (tuple of two ints)
-      As for nearest_pairs, but with next-nearest neighbours
+      As for nearest_pairs, but with next-nearest neighbours.
     ndets : int
       The total number of determinants.
     hamil : scipy csr_matrix
@@ -264,7 +264,6 @@ class LatticeHamil(metaclass=abc.ABCMeta):
 
       positions_j, dets_j = self.gen_excitations(self.dets[i])
 
-      #for j in range(self.ndets):
       for j, det_j in zip(positions_j, dets_j):
         if i == j:
           diag_elem = self.diag_hamil_elem(self.dets[i])
@@ -510,23 +509,23 @@ class LatticeHamil(metaclass=abc.ABCMeta):
         for j_1 in range(width):
           ind_a = i_1*width + j_1
 
-          i_2 = (i_1+2)%width
-          j_2 = j_1
+          i_2 = (i_1+1)%width
+          j_2 = (j_1+1)%width
           ind_b = i_2*width + j_2
           self.next_nearest_arr[ind_a,ind_b] = 1
 
-          i_2 = (i_1-2)%width
-          j_2 = j_1
+          i_2 = (i_1+1)%width
+          j_2 = (j_1-1)%width
           ind_b = i_2*width + j_2
           self.next_nearest_arr[ind_a,ind_b] = 1
 
-          i_2 = i_1
-          j_2 = (j_1+2)%width
+          i_2 = (i_1-1)%width
+          j_2 = (j_1+1)%width
           ind_b = i_2*width + j_2
           self.next_nearest_arr[ind_a,ind_b] = 1
 
-          i_2 = i_1
-          j_2 = (j_1-2)%width
+          i_2 = (i_1-1)%width
+          j_2 = (j_1-1)%width
           ind_b = i_2*width + j_2
           self.next_nearest_arr[ind_a,ind_b] = 1
 
@@ -554,7 +553,7 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     self.make_next_nearest_pairs()
 
   def make_next_nearest_pairs(self):
-    """Make the nearest_pairs array, which is a list of pairs of
+    """Make the next_nearest_pairs array, which is a list of pairs of
        next-nearest neighbours on the lattice."""
     self.next_nearest_pairs = []
 
@@ -614,7 +613,7 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     return nearest
 
   def next_nearest_neighbours(self, ind_ex):
-    """Return true if two orbitals are next nearest neighbours on the
+    """Return true if two orbitals are next-nearest neighbours on the
        lattice.
 
     Args
@@ -633,7 +632,7 @@ class LatticeHamil(metaclass=abc.ABCMeta):
     site_1 = ind_ex[0] // self.nspin
     site_2 = ind_ex[1] // self.nspin
 
-    next_nearest = self.nearest_arr[site_1,site_2] == 1
+    next_nearest = self.next_nearest_arr[site_1,site_2] == 1
 
     return next_nearest
 
@@ -1171,7 +1170,7 @@ class Heisenberg(LatticeHamil):
       for item in r:
         self.dets.append(item)
     else:
-      raise NotImplementedError('The Heisenberg model is not implemented' 
+      raise NotImplementedError('The Heisenberg model is not implemented '
           'with varying Ms value yet.')
 
     self.ndets = len(self.dets)
@@ -1214,7 +1213,7 @@ class Heisenberg(LatticeHamil):
     return diag_elem
 
   def off_diag_hamil_elem(self, occ_1, occ_2, ind_ex):
-    """Return the off-diagonal element of the Heisenberg Hamiltonain.
+    """Return the off-diagonal element of the Heisenberg Hamiltonian.
 
        IMPORTANT: This function assumes that the two configurations are
        a single excitation apart, and that the corresponding sites
@@ -1233,6 +1232,183 @@ class Heisenberg(LatticeHamil):
       The two orbitals whose occupation changes in the excitation.
     """
     return self.J/2.0
+
+  def add_potential_to_hamil(self, V):
+    """Add the potential V into the Hamiltonian object, hamil.
+       This potential V is the magnetic field strength (in the
+       z direction), i.e. V=B.
+
+    Args
+    ----
+    V : numpy ndarray of size (nsites)
+      An external potential.
+    """
+    all_sites = range(self.norbs)
+
+    for i in range(self.ndets):
+      diag_pos = self.diag_pos[i]
+      self.hamil.data[diag_pos] = self.hamil_diag[i]
+
+      # Loop over all spin-up sites in the configuration.
+      for site in self.dets[i]:
+        self.hamil.data[diag_pos] += V[site]/2.0
+
+      # Loop over all spin-down sites in the configuration.
+      spin_down_sites = set(all_sites).difference(set(self.dets[i]))
+      for site in spin_down_sites:
+        self.hamil.data[diag_pos] += -V[site]/2.0
+
+
+class J1_J2(LatticeHamil):
+  """Hamiltonian for a J1-J2 model."""
+
+  def __init__(self,
+               J1,
+               J2,
+               max_V,
+               nsites,
+               fixed_Ms=True,
+               Ms=0,
+               lattice_type='1d',
+               seed=7):
+    """Initialises an object for the Hamiltonian of a spinless Hubbard
+       model.
+
+    Args
+    ----
+    J1 : float
+      The coupling constant for nearest neighbours.
+    J2 : float
+      The coupling constant for next-nearest neighbours.
+
+    Other arguments and attributes are defined in the base class
+    (LatticeHamil) docstring.
+    """
+    self.J1 = J1
+    self.J2 = J2
+
+    if nsites%2 != Ms%2:
+      raise ValueError('Combination of nsites and Ms is not possible.')
+
+    # In the J1-J2 model, an occupied orbital actually refers to
+    # an up spin. An unoccupied orbital refers to a down spin. So the
+    # value nparticles is actually the number of up spins, (nsites+Ms)/2.
+    # And the number of down spins is (nsites-Ms)/2. Because of this,
+    # fixed_nparticles is the same as fixed_Ms in the Heisenberg model.
+
+    # Note that nsites+Ms is always even, so there is no rounding.
+    nparticles = int((nsites+Ms)/2)
+    # For now, we only allow a fixed Ms value.
+    fixed_nparticles = True
+
+    super().__init__(
+        mu=0,
+        max_V=max_V,
+        nsites=nsites,
+        nspin=1,
+        fixed_Ms=fixed_Ms,
+        Ms=Ms,
+        fixed_nparticles=fixed_nparticles,
+        nparticles=nparticles,
+        next_nearest=True,
+        nonlocal_pot=False,
+        lattice_type=lattice_type,
+        seed=seed)
+
+  def generate_dets(self):
+    """Generate the full list of determinants (spin configurations)
+       that span the space."""
+    self.dets = []
+
+    if self.fixed_nparticles:
+      # Generate all configurations with nparticles up spins in
+      # nsites lattice sites.
+      r = itertools.combinations(range(self.nsites), self.nparticles)
+      for item in r:
+        self.dets.append(item)
+    else:
+      raise NotImplementedError('The J1-J2 model is not implemented '
+          'with varying Ms value yet.')
+
+    self.ndets = len(self.dets)
+
+    # Generate dictionary to allow us to efficiently find the index
+    # of a given determinant in the full list.
+    self.dets_dict = {}
+    for i, det_i in enumerate(self.dets):
+      self.dets_dict[det_i] = i
+
+  def diag_hamil_elem(self, occ):
+    """Generate and return the diagonal element of the Hamiltonian,
+       corresponding to determinant represented by occ.
+
+    Args
+    ----
+    occ : tuple of int
+      Tuple holding all the lattice sites which are spin up.
+    """
+    # Loop over all pairs of neighbour and next-nearest neighbour
+    # spins, and calculate how many are nearest parallel (np_n) and
+    # nearest antiparallel (na_n), and the equivalent for next-nearest
+    # sites (np_nn and na_nn). The total diagonal element is
+    # J1*(np_n-na_n)/4 + J2*(np_nn-na_nn)/4.
+    np_n = 0
+    na_n = 0
+    np_nn = 0
+    na_nn = 0
+
+    for pair in self.nearest_pairs:
+      site_1 = pair[0]
+      site_2 = pair[1]
+      site_1_up = site_1 in occ
+      site_2_up = site_2 in occ
+      if site_1_up and site_2_up:
+        np_n += 1
+      elif not site_1_up and not site_2_up:
+        np_n += 1
+      else:
+        na_n += 1
+
+    for pair in self.next_nearest_pairs:
+      site_1 = pair[0]
+      site_2 = pair[1]
+      site_1_up = site_1 in occ
+      site_2_up = site_2 in occ
+      if site_1_up and site_2_up:
+        np_nn += 1
+      elif not site_1_up and not site_2_up:
+        np_nn += 1
+      else:
+        na_nn += 1
+
+    diag_elem = (self.J1 * (np_n - na_n) + self.J2 * (np_nn - na_nn)) / 4.0
+    return diag_elem
+
+  def off_diag_hamil_elem(self, occ_1, occ_2, ind_ex):
+    """Return the off-diagonal element of the J1-J2 Hamiltonian.
+
+       IMPORTANT: This function assumes that the two configurations are
+       a single excitation apart, and that the corresponding sites
+       involved in the excitation are connected. This means that the
+       off-diagonal element is guaranteed to be non-zero. If the sites
+       are not connected, then an error is raised.
+
+    Args
+    ----
+    occ_1 : tuple of int
+      Tuple holding all up-spin sites in configuration 1.
+    occ_2 : tuple of int
+      Tuple holding all up-spin sites in configuration 2.
+    ind_ex : tuple of int
+      The two orbitals whose occupation changes in the excitation.
+    """
+    if self.nearest_neighbours(ind_ex):
+      return self.J1/2.0
+    elif self.next_nearest_neighbours(ind_ex):
+      return self.J2/2.0
+    else:
+      raise ValueError('Sites in the J1-J2 model are not connected, in '
+          'the off_diag_hamil_elem function.')
 
   def add_potential_to_hamil(self, V):
     """Add the potential V into the Hamiltonian object, hamil.
